@@ -1,0 +1,30 @@
+version: 1
+language: go
+policy:
+  default:
+    min: 85
+  domains:
+    - name: cmd
+      match:
+        - ./cmd/...
+      min: 0
+    - name: auth
+      match:
+        - ./internal/auth/...
+      min: 95
+    - name: domain
+      match:
+        - ./internal/domain/...
+      min: 95
+    - name: mcp
+      match:
+        - ./internal/mcp/...
+      min: 75
+    - name: seed
+      match:
+        - ./internal/seed/...
+      min: 95
+    - name: storage
+      match:
+        - ./internal/storage/...
+      min: 80

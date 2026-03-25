@@ -1,78 +1,204 @@
-# go-teamhealthcheck
+# healthcheck-mcp
 
-![Build Status](https://github.com/FelixGeelhaar/go-teamhealthcheck/workflows/continous-test/badge.svg?branch=master)
+An MCP (Model Context Protocol) server for running Spotify Squad Health Checks with AI agents.
 
-## Content
+Let AI facilitate team health checks directly in conversations — collecting votes, aggregating results, tracking trends, and surfacing discussion topics. Supports both single-user (stdio) and multi-user (HTTP/SSE) modes.
 
-1. Concept of the Team/Squad Health Check
-2. Goal of this Module
-3. Usage
-4. Contribution
+## Features
 
-### Concept of the Team Health Check
+- **24 MCP tools** — Full health check lifecycle: teams, templates, sessions, voting, comparison, and analysis
+- **Multi-user HTTP/SSE** — Multiple team members connect to a shared server, each voting independently
+- **Token-based auth** — Bearer token authentication with auto-filled participant identity
+- **State machine lifecycle** — statekit-powered transitions: open → closed → archived, with guards (can't close without votes) and reopen support
+- **Built-in Spotify template** — Ships with the original 10 Squad Health Check categories
+- **Custom templates** — Create your own health check formats
+- **Trend tracking** — Compare results across sprints, flag declining metrics
+- **AI-friendly analysis** — Structured summaries, discussion topic generation, disagreement detection
+- **Structured logging** — bolt-powered JSON (prod) or colored console (dev) logging
+- **SQLite storage** — Zero-config persistence, single-file database
+- **Single binary** — No runtime dependencies, cross-platform
 
-The Team/Squad Health Check was formerly mentioned from Spotify as the Squad
-Health Check. It is used to evaluate and identify on how is the team doing. The
-Stakeholders of this Health Check are the teams themselves as also shared
-Leaders, so that those get a sense on where to focus their improvement efforts,
-spot systemic problems, and help teams become more self-aware so they can focus
-their improvement efforts too.
-[further reading](https://labs.spotify.com/2014/09/16/squad-health-check-model/ 'Spotifys Blog')
+## Installation
 
-### Goal of this Module
+### From source
 
-The module should help you to provide a simple model of the Health Check to just
-be able to implement a Service or API to use the Health Check. Mostly because
-the Teams I'm working with requested to gather the data not manually anymore,
-but through an App or website, I decided to start simple with a model.
-
-### Next Steps
-
-This model just reached version `v0.1.0`. So it's the very beginning. Once I'm
-starting to use it more often, this model will get extentend when it makes
-sense. There will be example implementations following.
-
-Otherwise just check the Changelog.
-
-### Usage
-
-As this is a simple model, the usage is concidered the following path:
-
-```
-  // Beginning of your go file / function / ...
-  metric1 := teamhealthcheck.New("Metric 1")
-  metric1.SetTendency(2)
-  metric1.SetRed(2)
-  ...
+```bash
+go install github.com/felixgeelhaar/go-teamhealthcheck/cmd/healthcheck-mcp@latest
 ```
 
-### Contribution
+### From release
 
-Feel free to contribute, but make sure to follow along with the following
-guideline for Commits:
+Download a pre-built binary from [Releases](https://github.com/felixgeelhaar/go-teamhealthcheck/releases).
 
-_Structural elements_:
+## Usage
 
-- _fix_: a commit of the type fix patches a bug in your codebase (this
-  correlates with PATCH in semantic versioning)
-- _feat_: a commit of the type feat introduces a new feature to the codebase
-  (this correlates with MINOR in semantic versioning).
-- _BREAKING CHANGE_: a commit that has the text BREAKING CHANGE: at the
-  beginning of its optional body or footer section introduces a breaking API
-  change (correlating with MAJOR in semantic versioning). A BREAKING CHANGE can
-  be part of commits of any type.
-- _chore_, _docs_, _style_, _refactor_, _perf_ or _test_ are fine too
+### Single-user (stdio)
 
-[further reading](https://www.conventionalcommits.org/en/v1.0.0-beta.4/#summary)
+```bash
+healthcheck-mcp
+```
 
-_Commit messages_:
+For use with Claude Desktop, add to `claude_desktop_config.json`:
 
-- Separate subject from body with a blank line
-- Limit the subject line to 50 characters
-- Capitalize the subject line
-- Do not end the subject line with a period
-- Use the imperative mood in the subject line
-- Wrap the body at 72 characters
-- Use the body to explain what and why vs. how
+```json
+{
+  "mcpServers": {
+    "healthcheck": {
+      "command": "healthcheck-mcp",
+      "args": []
+    }
+  }
+}
+```
 
-[further reading](https://chris.beams.io/posts/git-commit/#seven-rules)
+### Multi-user (HTTP/SSE)
+
+```bash
+healthcheck-mcp --mode http --addr :8080
+```
+
+Multiple team members connect their MCP clients to the same server. Each authenticates with a Bearer token that maps to their identity.
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--mode` | `stdio` | Transport: `stdio` or `http` |
+| `--addr` | `:8080` | HTTP listen address |
+| `--db` | `~/.healthcheck-mcp/data.db` | SQLite database path |
+| `--auth` | `~/.healthcheck-mcp/auth.json` | Auth config file (HTTP mode) |
+| `--dev` | `false` | Development mode (colored console logging) |
+
+### Auth Configuration
+
+Create `~/.healthcheck-mcp/auth.json`:
+
+```json
+{
+  "tokens": {
+    "alice-secret-token": {"name": "Alice", "team_id": "your-team-uuid"},
+    "bob-secret-token": {"name": "Bob", "team_id": "your-team-uuid"}
+  }
+}
+```
+
+When authenticated, `submit_vote` auto-fills the participant name from the token identity. The `my_pending_healthchecks` tool shows which metrics the user hasn't voted on yet.
+
+## MCP Tools
+
+### Team Management
+| Tool | Description |
+|------|-------------|
+| `create_team` | Create a new team with optional initial members |
+| `list_teams` | List all teams |
+| `get_team` | Get team details including members |
+| `delete_team` | Delete a team |
+| `add_team_member` | Add a member to a team |
+| `remove_team_member` | Remove a member from a team |
+
+### Templates
+| Tool | Description |
+|------|-------------|
+| `list_templates` | List all templates (includes built-in Spotify template) |
+| `get_template` | Get template with all metric definitions |
+| `create_template` | Create a custom template with metrics |
+| `delete_template` | Delete a custom template |
+
+### Health Check Sessions
+| Tool | Description |
+|------|-------------|
+| `create_healthcheck` | Start a new health check session |
+| `list_healthchecks` | List sessions (filter by team/status) |
+| `get_healthcheck` | Get session with current results |
+| `close_healthcheck` | Close session (requires at least one vote) |
+| `reopen_healthcheck` | Reopen a closed session for more votes |
+| `archive_healthcheck` | Archive a closed session (terminal) |
+| `delete_healthcheck` | Delete session and all votes |
+| `my_pending_healthchecks` | List metrics the authenticated user hasn't voted on |
+
+### Voting
+| Tool | Description |
+|------|-------------|
+| `submit_vote` | Vote green/yellow/red on a metric (participant auto-filled from auth) |
+| `get_results` | Get aggregated results with scores and stats |
+
+### Analysis
+| Tool | Description |
+|------|-------------|
+| `compare_sessions` | Compare results across sprints with trend detection |
+| `analyze_healthcheck` | AI-friendly summary with strengths/concerns |
+| `get_trends` | Historical trend analysis for a team |
+| `get_discussion_topics` | Suggested topics based on disagreement, low scores, and declining trends |
+
+## Health Check Lifecycle
+
+The session lifecycle is managed by a [statekit](https://github.com/felixgeelhaar/statekit) state machine:
+
+```
+         create              close (requires votes)        archive
+         ──────→  open  ─────────────────────────→  closed  ──────→  archived
+                   ↑                                  │
+                   └──────────── reopen ──────────────┘
+```
+
+- **open** — accepting votes
+- **closed** — voting complete, results available, can reopen or archive
+- **archived** — terminal state, read-only
+
+Guards enforce business rules (e.g., can't close without votes). Actions execute side effects (set timestamps, log transitions).
+
+## Multi-User Workflow
+
+```
+# Team lead starts the server
+healthcheck-mcp --mode http --addr :8080
+
+# Each team member connects their AI client with their token
+# Alice's session:
+Alice: "Do I have any pending health checks?"
+Agent: [calls my_pending_healthchecks] You have Sprint 42 — 10 metrics pending.
+Alice: "I vote green on Fun, red on Tech Quality..."
+Agent: [calls submit_vote x10] All votes recorded!
+
+# Bob's session (same server):
+Bob: "What health checks are open?"
+Agent: [calls my_pending_healthchecks] Sprint 42 — 10 metrics pending.
+Bob: "Green on everything except Speed, that's yellow"
+Agent: [calls submit_vote x10] Done!
+
+# Team lead reviews:
+Lead: "Show me the Sprint 42 results"
+Agent: [calls get_results] Here's the breakdown...
+Lead: "What should we discuss?"
+Agent: [calls get_discussion_topics] Top topics: Tech Quality (disagreement)...
+```
+
+## Built-in Spotify Template
+
+Ships with the original [Spotify Squad Health Check](https://labs.spotify.com/2014/09/16/squad-health-check-model/) categories:
+
+1. Easy to Release
+2. Suitable Process
+3. Tech Quality
+4. Value
+5. Speed
+6. Mission
+7. Fun
+8. Learning
+9. Support
+10. Pawns or Players
+
+## Built With
+
+- [mcp-go](https://github.com/felixgeelhaar/mcp-go) — MCP server framework
+- [bolt](https://github.com/felixgeelhaar/bolt) — Structured logging
+- [statekit](https://github.com/felixgeelhaar/statekit) — State machine engine
+- [fortify](https://github.com/felixgeelhaar/fortify) — Resilience middleware (via mcp-go)
+
+## Commit Convention
+
+Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `perf:`, `test:`.
+
+## License
+
+MIT

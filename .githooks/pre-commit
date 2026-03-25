@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== Pre-commit checks ==="
+
+# 1. Go formatting
+echo "--- go fmt ---"
+UNFMT=$(gofmt -l . 2>&1 | grep -v vendor/ || true)
+if [ -n "$UNFMT" ]; then
+    echo "ERROR: The following files are not formatted:"
+    echo "$UNFMT"
+    echo "Run: gofmt -w ."
+    exit 1
+fi
+echo "PASS"
+
+# 2. Go vet
+echo "--- go vet ---"
+go vet ./...
+echo "PASS"
+
+# 3. Go build
+echo "--- go build ---"
+go build ./...
+echo "PASS"
+
+# 4. Go tests
+echo "--- go test ---"
+go test -race -count=1 -timeout 60s ./...
+echo "PASS"
+
+# 5. Nox security scan (only on changed files)
+if command -v nox &> /dev/null; then
+    echo "--- nox security scan ---"
+    nox scan . --baseline .nox/baseline.json --fail-on medium 2>&1 || {
+        echo "ERROR: nox found new security findings"
+        echo "Run: nox scan . to review findings"
+        exit 1
+    }
+    echo "PASS"
+else
+    echo "--- nox: skipped (not installed) ---"
+fi
+
+# 6. Coverctl coverage check
+if command -v coverctl &> /dev/null; then
+    echo "--- coverctl coverage ---"
+    coverctl check --config .coverctl.yaml 2>&1 || {
+        echo "ERROR: Coverage thresholds not met"
+        echo "Run: coverctl check --config .coverctl.yaml to review"
+        exit 1
+    }
+    echo "PASS"
+else
+    echo "--- coverctl: skipped (not installed) ---"
+fi
+
+echo "=== All pre-commit checks passed ==="
