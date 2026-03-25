@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -14,6 +15,8 @@ import (
 	"github.com/felixgeelhaar/mcp-go/middleware"
 
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/auth"
+	"github.com/felixgeelhaar/go-teamhealthcheck/internal/dashboard"
+	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
 	mcptools "github.com/felixgeelhaar/go-teamhealthcheck/internal/mcp"
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
 )
@@ -27,6 +30,7 @@ func main() {
 	mode := flag.String("mode", "stdio", "Transport mode: stdio or http")
 	addr := flag.String("addr", ":8080", "HTTP listen address (only used with --mode http)")
 	authConfig := flag.String("auth", defaultAuth, "Path to auth config file (only used with --mode http)")
+	dashboardAddr := flag.String("dashboard-addr", ":3000", "Dashboard HTTP listen address (empty to disable)")
 	dev := flag.Bool("dev", false, "Development mode (colored console logging)")
 	flag.Parse()
 
@@ -45,6 +49,10 @@ func main() {
 	}
 	defer store.Close()
 
+	// Create event bus and attach to store
+	bus := events.NewBus()
+	store.SetEventBus(bus)
+
 	srv := mcptools.NewServer(store, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -54,6 +62,22 @@ func main() {
 		<-sigChan
 		cancel()
 	}()
+
+	// Start dashboard server if configured
+	var dashSrv *dashboard.Server
+	if *dashboardAddr != "" {
+		dashSrv = dashboard.New(dashboard.Config{
+			Addr:   *dashboardAddr,
+			Store:  store,
+			Bus:    bus,
+			Logger: logger,
+		})
+		go func() {
+			if err := dashSrv.Start(); err != nil && err != http.ErrServerClosed {
+				logger.Error().Err(err).Msg("dashboard server error")
+			}
+		}()
+	}
 
 	switch *mode {
 	case "http":
@@ -94,5 +118,12 @@ func main() {
 		if err := mcp.ServeStdio(ctx, srv); err != nil {
 			logger.Fatal().Err(err).Msg("stdio server error")
 		}
+	}
+
+	// Graceful shutdown of dashboard
+	if dashSrv != nil {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+		dashSrv.Shutdown(shutdownCtx)
 	}
 }

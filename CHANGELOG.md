@@ -28,6 +28,11 @@
 - Cross-session comparison with trend detection (improving/stable/declining)
 - AI-friendly analysis: strengths, concerns, discussion topics
 - Discussion topic generation based on disagreement, low scores, and declining trends
+- Live web dashboard with real-time updates via WebSocket (React SPA, `--dashboard-addr :3000`)
+- Event bus architecture: Store publishes events on mutations, dashboard auto-updates
+- MCP Apps UIResource: interactive voting form and results heatmap (rendered in Claude Desktop)
+- Dashboard REST API: `/api/teams`, `/api/healthchecks`, `/api/healthchecks/{id}/results`
+- SPA embedded in binary via `embed.FS` — single binary deployment
 
 ## [v0.1.1](https://github.com/FelixGeelhaar/go-teamhealthcheck/releases/tag/v0.1.1) (2020-04-14)
 

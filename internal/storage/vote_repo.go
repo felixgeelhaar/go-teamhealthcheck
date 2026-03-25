@@ -2,6 +2,7 @@ package storage
 
 import (
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
+	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
 )
 
 func (s *Store) UpsertVote(vote *domain.Vote) error {
@@ -12,6 +13,14 @@ func (s *Store) UpsertVote(vote *domain.Vote) error {
 		 DO UPDATE SET color = excluded.color, comment = excluded.comment, created_at = excluded.created_at`,
 		vote.ID, vote.HealthCheckID, vote.MetricName, vote.Participant, vote.Color, vote.Comment, vote.CreatedAt,
 	)
+	if err == nil {
+		s.publish(events.Event{
+			Type:          events.VoteSubmitted,
+			HealthCheckID: vote.HealthCheckID,
+			Participant:   vote.Participant,
+			MetricName:    vote.MetricName,
+		})
+	}
 	return err
 }
 

@@ -4,13 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MCP server for running Spotify Squad Health Checks with AI agents. Supports single-user (stdio) and multi-user (HTTP/SSE) modes with token-based auth.
+MCP server for running Spotify Squad Health Checks with AI agents. Supports single-user (stdio) and multi-user (HTTP/SSE) modes with token-based auth, a live web dashboard with real-time updates, and MCP Apps UI for in-client voting.
 
 Built with:
 - `github.com/felixgeelhaar/mcp-go` — MCP framework
 - `github.com/felixgeelhaar/bolt` — Structured logging
 - `github.com/felixgeelhaar/statekit` — State machine for health check lifecycle
 - `modernc.org/sqlite` — Pure Go SQLite
+- React + Vite — Dashboard SPA (embedded in binary)
 
 ## Commands
 
@@ -30,22 +31,35 @@ go vet ./...
 # Run stdio mode
 go run ./cmd/healthcheck-mcp/ --db /tmp/test.db
 
-# Run HTTP mode
-go run ./cmd/healthcheck-mcp/ --mode http --addr :8080 --dev
+# Run HTTP mode with dashboard
+go run ./cmd/healthcheck-mcp/ --mode http --addr :8080 --dashboard-addr :3000 --dev
+
+# Build the React SPA (required before go build if SPA changed)
+cd web/app && npm install && ./node_modules/.bin/tsc && ./node_modules/.bin/vite build
+cp dist/index.html ../../internal/dashboard/spa/index.html
+
+# Run pre-commit hooks manually
+.githooks/pre-commit
 ```
 
-## Architecture (DDD)
+## Architecture
 
 ```
-cmd/healthcheck-mcp/main.go       → Entry point: bolt logger, dual transport, auth middleware
+cmd/healthcheck-mcp/main.go       → Entry point: bolt logger, dual transport, event bus, dashboard server
 internal/auth/config.go            → Auth config loader (token → user identity mapping)
-internal/domain/                   → Pure domain: entities, value objects, repository interfaces, state machine
-internal/storage/                  → SQLite repository implementations
-internal/mcp/                      → MCP tool handlers (application/adapter layer)
+internal/domain/                   → Pure domain: entities, value objects, state machine
+internal/events/bus.go             → Event bus: pub/sub for real-time updates
+internal/storage/                  → SQLite repos (publishes events on mutations)
+internal/mcp/                      → 24 MCP tools + UIResource registrations
+internal/dashboard/                → Dashboard HTTP server: REST API + WebSocket hub + embedded SPA
+internal/mcpui/                    → Self-contained HTML generators for MCP Apps
 internal/seed/                     → Built-in Spotify template data
+web/app/                           → React SPA source (Vite + TypeScript)
 ```
 
-**Domain layer** (`internal/domain/`) has zero infrastructure imports except bolt and statekit. Repository interfaces defined here; `storage` implements them.
+**Real-time flow**: MCP tool call → Store mutation → EventBus.Publish → WebSocket Hub.OnEvent → broadcast to all browser clients → React refetches via REST API.
+
+**Domain layer** (`internal/domain/`) has zero infrastructure imports except bolt and statekit.
 
 **Key domain types:**
 - `Team` — aggregate root, owns health checks
@@ -55,13 +69,21 @@ internal/seed/                     → Built-in Spotify template data
 - `MetricResult` / `MetricTrend` — computed views, not stored
 - `HealthCheckStateMachine` — statekit-powered lifecycle transitions with guards and actions
 
-**State machine:** Two machine configs (one for open→closed, one for closed→archived/reopened) since statekit's regular interpreter always starts at the initial state. The `Transition()` method selects the right machine based on current status.
+**State machine:** Two machine configs (open→closed with hasVotes guard, closed→archived/reopened). The `Transition()` method selects the right machine based on current status.
 
-**Auth flow (HTTP mode):** Bearer token in header → mcp-go auth middleware → `middleware.IdentityFromContext(ctx)` in tool handlers → auto-fills participant name on votes.
+**Dashboard:** Separate HTTP server on `:3000`. React SPA built to single HTML file via vite-plugin-singlefile, embedded in Go binary via `embed.FS`. REST API + WebSocket for live updates.
 
-**Storage:** SQLite via `modernc.org/sqlite` (pure Go, no CGO). In-memory via `:memory:` with shared cache for tests. WAL mode + busy_timeout for concurrent HTTP access.
+**Storage:** SQLite via `modernc.org/sqlite`. WAL mode + busy_timeout for concurrent access. Event bus publishes after mutations.
 
-**MCP tools (24):** Registered in `internal/mcp/server.go`, grouped by file: team, template, healthcheck, vote, compare, analyze.
+## Pre-commit Hooks
+
+Git hooks in `.githooks/` (configured via `git config core.hooksPath .githooks`):
+1. `go fmt` — formatting
+2. `go vet` — static analysis
+3. `go build` — compilation
+4. `go test -race` — tests with race detector
+5. `nox scan` — security scan (baseline at `.nox/baseline.json`)
+6. `coverctl check` — coverage thresholds (`.coverctl.yaml`)
 
 ## Commit Convention
 

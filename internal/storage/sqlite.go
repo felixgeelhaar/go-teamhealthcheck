@@ -9,6 +9,7 @@ import (
 	bolt "github.com/felixgeelhaar/bolt"
 	_ "modernc.org/sqlite"
 
+	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/seed"
 	"github.com/google/uuid"
 )
@@ -17,6 +18,19 @@ import (
 type Store struct {
 	db     *sql.DB
 	logger *bolt.Logger
+	bus    *events.Bus
+}
+
+// SetEventBus attaches an event bus to the store for publishing data change events.
+func (s *Store) SetEventBus(bus *events.Bus) {
+	s.bus = bus
+}
+
+// publish is a nil-safe helper for emitting events.
+func (s *Store) publish(e events.Event) {
+	if s.bus != nil {
+		s.bus.Publish(e)
+	}
 }
 
 // New opens (or creates) a SQLite database at the given path, runs migrations,

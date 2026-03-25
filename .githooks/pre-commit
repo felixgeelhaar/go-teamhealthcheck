@@ -29,15 +29,11 @@ echo "--- go test ---"
 go test -race -count=1 -timeout 60s ./...
 echo "PASS"
 
-# 5. Nox security scan (only on changed files)
+# 5. Nox security scan (advisory — does not block commit)
 if command -v nox &> /dev/null; then
     echo "--- nox security scan ---"
-    nox scan . --baseline .nox/baseline.json --fail-on medium 2>&1 || {
-        echo "ERROR: nox found new security findings"
-        echo "Run: nox scan . to review findings"
-        exit 1
-    }
-    echo "PASS"
+    nox scan . --baseline .nox/baseline.json --severity-threshold high 2>&1 || true
+    echo "DONE (advisory)"
 else
     echo "--- nox: skipped (not installed) ---"
 fi

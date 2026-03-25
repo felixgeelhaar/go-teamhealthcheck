@@ -18,3 +18,7 @@
 *.backup
 .nox/
 findings.json
+
+# Frontend build artifacts
+web/app/node_modules/
+web/app/dist/

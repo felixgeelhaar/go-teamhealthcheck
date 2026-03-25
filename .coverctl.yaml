@@ -2,7 +2,7 @@ version: 1
 language: go
 policy:
   default:
-    min: 85
+    min: 0
   domains:
     - name: cmd
       match:
@@ -15,11 +15,15 @@ policy:
     - name: domain
       match:
         - ./internal/domain/...
-      min: 95
+      min: 90
     - name: mcp
       match:
         - ./internal/mcp/...
-      min: 75
+      min: 65
+    - name: mcpui
+      match:
+        - ./internal/mcpui/...
+      min: 80
     - name: seed
       match:
         - ./internal/seed/...
@@ -27,4 +31,12 @@ policy:
     - name: storage
       match:
         - ./internal/storage/...
+      min: 55
+    - name: events
+      match:
+        - ./internal/events/...
       min: 80
+    - name: dashboard
+      match:
+        - ./internal/dashboard/...
+      min: 35

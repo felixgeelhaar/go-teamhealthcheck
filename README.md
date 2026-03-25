@@ -51,13 +51,13 @@ For use with Claude Desktop, add to `claude_desktop_config.json`:
 }
 ```
 
-### Multi-user (HTTP/SSE)
+### Multi-user (HTTP/SSE) with Dashboard
 
 ```bash
-healthcheck-mcp --mode http --addr :8080
+healthcheck-mcp --mode http --addr :8080 --dashboard-addr :3000
 ```
 
-Multiple team members connect their MCP clients to the same server. Each authenticates with a Bearer token that maps to their identity.
+Multiple team members connect their MCP clients to the same server. Each authenticates with a Bearer token that maps to their identity. The live dashboard is available at `http://localhost:3000`.
 
 ### Flags
 
@@ -65,6 +65,7 @@ Multiple team members connect their MCP clients to the same server. Each authent
 |------|---------|-------------|
 | `--mode` | `stdio` | Transport: `stdio` or `http` |
 | `--addr` | `:8080` | HTTP listen address |
+| `--dashboard-addr` | `:3000` | Dashboard HTTP listen address (empty to disable) |
 | `--db` | `~/.healthcheck-mcp/data.db` | SQLite database path |
 | `--auth` | `~/.healthcheck-mcp/auth.json` | Auth config file (HTTP mode) |
 | `--dev` | `false` | Development mode (colored console logging) |
@@ -147,11 +148,47 @@ The session lifecycle is managed by a [statekit](https://github.com/felixgeelhaa
 
 Guards enforce business rules (e.g., can't close without votes). Actions execute side effects (set timestamps, log transitions).
 
+## Live Dashboard
+
+The dashboard provides a real-time web UI for viewing health check results. It runs on a separate port alongside the MCP server.
+
+**Features:**
+- Team selector with health check list
+- Per-metric traffic-light results grid with scores
+- Voting progress tracking
+- Live updates via WebSocket — when anyone votes, all dashboards update instantly
+
+**How it works:**
+1. Store publishes events after mutations (vote submitted, status changed, etc.)
+2. WebSocket hub broadcasts events to all connected browser clients
+3. React SPA refetches data and re-renders the affected components
+
+The SPA is embedded in the Go binary — no separate frontend deployment needed.
+
+### Dashboard REST API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/teams` | List all teams |
+| `GET /api/healthchecks?team_id=X&status=Y` | List health checks |
+| `GET /api/healthchecks/{id}` | Health check details + template |
+| `GET /api/healthchecks/{id}/results` | Aggregated results |
+| `GET /ws` | WebSocket for real-time events |
+
+## MCP Apps
+
+When used with Claude Desktop or other MCP Apps-compatible clients, tools can render interactive HTML UIs:
+
+- **Voting form** (`ui://healthcheck/{id}/vote`) — card per metric with green/yellow/red buttons
+- **Results heatmap** (`ui://healthcheck/{id}/results`) — traffic-light visualization with scores
+
+These are self-contained HTML documents rendered in a sandboxed iframe.
+
 ## Multi-User Workflow
 
 ```
-# Team lead starts the server
-healthcheck-mcp --mode http --addr :8080
+# Team lead starts the server with dashboard
+healthcheck-mcp --mode http --addr :8080 --dashboard-addr :3000
 
 # Each team member connects their AI client with their token
 # Alice's session:
@@ -171,6 +208,8 @@ Lead: "Show me the Sprint 42 results"
 Agent: [calls get_results] Here's the breakdown...
 Lead: "What should we discuss?"
 Agent: [calls get_discussion_topics] Top topics: Tech Quality (disagreement)...
+
+# Meanwhile, the dashboard at localhost:3000 shows results updating live
 ```
 
 ## Built-in Spotify Template
@@ -187,6 +226,22 @@ Ships with the original [Spotify Squad Health Check](https://labs.spotify.com/20
 8. Learning
 9. Support
 10. Pawns or Players
+
+## Building from Source
+
+```bash
+# 1. Build the React SPA (requires Node.js)
+cd web/app
+npm install
+./node_modules/.bin/tsc && ./node_modules/.bin/vite build
+cp dist/index.html ../../internal/dashboard/spa/index.html
+cd ../..
+
+# 2. Build the Go binary (SPA is embedded)
+go build -o healthcheck-mcp ./cmd/healthcheck-mcp/
+```
+
+The SPA only needs rebuilding when `web/app/src/` changes. The Go binary embeds the built HTML file, so the final artifact is a single binary with no runtime dependencies.
 
 ## Built With
 
