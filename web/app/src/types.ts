@@ -16,6 +16,24 @@ export interface HealthCheck {
   ClosedAt: string | null
 }
 
+export interface TemplateMetric {
+  ID: string
+  TemplateID: string
+  Name: string
+  DescriptionGood: string
+  DescriptionBad: string
+  SortOrder: number
+}
+
+export interface Template {
+  ID: string
+  Name: string
+  Description: string
+  BuiltIn: boolean
+  Metrics: TemplateMetric[]
+  CreatedAt: string
+}
+
 export interface MetricResult {
   MetricName: string
   DescriptionGood: string
@@ -33,7 +51,37 @@ export interface HealthCheckResults {
   results: MetricResult[]
   average_score: number
   participants: number
+  participant_names: string[]
   total_votes: number
+}
+
+export interface HealthCheckDetail {
+  healthcheck: HealthCheck
+  template: Template
+}
+
+export interface VotePayload {
+  participant: string
+  metric_name: string
+  color: 'green' | 'yellow' | 'red'
+  comment?: string
+}
+
+export interface CreateTemplateMetric {
+  name: string
+  description_good: string
+  description_bad: string
+}
+
+export interface CreateTemplatePayload {
+  name: string
+  description: string
+  metrics: CreateTemplateMetric[]
+}
+
+export interface CreateHealthCheckPayload {
+  name: string
+  template_id: string
 }
 
 export interface WSEvent {

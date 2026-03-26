@@ -3,11 +3,13 @@ import { useApi } from '../hooks/useApi'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { MetricRow } from '../components/MetricRow'
 import { VoteProgress } from '../components/VoteProgress'
+import { StatusBadge } from '../components/StatusBadge'
+import { scoreColorClass, getAvatarColor, getInitial } from '../utils'
 import type { HealthCheckResults, WSEvent } from '../types'
 
 export function HealthCheckView() {
   const { id } = useParams<{ id: string }>()
-  const { data, refetch } = useApi<HealthCheckResults>(
+  const { data, loading, refetch } = useApi<HealthCheckResults>(
     id ? `/api/healthchecks/${id}/results` : null
   )
 
@@ -17,68 +19,90 @@ export function HealthCheckView() {
     }
   })
 
-  if (!data) {
-    return <div style={{ color: '#9ca3af', padding: '24px' }}>Loading...</div>
+  if (loading || !data) {
+    return (
+      <div className="loading">
+        <div className="loading-spinner" />
+        Loading...
+      </div>
+    )
   }
 
-  const { healthcheck: hc, results, average_score, participants, total_votes } = data
-
-  const scoreColor =
-    average_score >= 2.5 ? '#22c55e' :
-    average_score >= 1.5 ? '#eab308' : '#ef4444'
+  const { healthcheck: hc, results, average_score, participants, participant_names, total_votes } = data
+  const colorClass = scoreColorClass(average_score)
 
   return (
     <div>
-      <Link to="/" style={{ color: '#3b82f6', fontSize: '14px', textDecoration: 'none' }}>
-        &larr; Back
+      <Link to="/" className="back-link">
+        &#8592; Back to dashboard
       </Link>
 
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginTop: '16px',
-        marginBottom: '24px',
-      }}>
-        <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>{hc.Name}</h1>
-          <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>
-            {hc.Status} &middot; {participants} participant{participants !== 1 ? 's' : ''} &middot; {total_votes} total votes
+      <div className="page-header">
+        <div className="page-header-top">
+          <div>
+            <div className="page-header-meta">
+              <StatusBadge status={hc.Status} />
+            </div>
+            <h1>{hc.Name}</h1>
           </div>
-        </div>
-        <div style={{
-          fontSize: '32px',
-          fontWeight: 800,
-          color: scoreColor,
-        }}>
-          {total_votes > 0 ? average_score.toFixed(1) : '-'}
+          <div className={`page-header-score ${colorClass}`}>
+            {total_votes > 0 ? average_score.toFixed(1) : '-'}
+          </div>
         </div>
       </div>
 
-      <VoteProgress
-        results={results}
-        totalMetrics={results.length}
-      />
-
-      <div style={{ marginBottom: '8px' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '200px 1fr 60px',
-          gap: '12px',
-          padding: '0 0 8px',
-          fontSize: '12px',
-          fontWeight: 600,
-          color: '#9ca3af',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-        }}>
-          <div>Metric</div>
-          <div>Votes</div>
-          <div style={{ textAlign: 'center' }}>Score</div>
+      <div className="stats-row" style={{ marginBottom: '24px' }}>
+        <div className="stat-item">
+          <div className="stat-value">{participants}</div>
+          <div className="stat-label">Participants</div>
         </div>
-        {results.map(metric => (
-          <MetricRow key={metric.MetricName} metric={metric} />
-        ))}
+        <div className="stat-item">
+          <div className="stat-value">{total_votes}</div>
+          <div className="stat-label">Total Votes</div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-value">{results.length}</div>
+          <div className="stat-label">Metrics</div>
+        </div>
+      </div>
+
+      {participant_names && participant_names.length > 0 && (
+        <div style={{ marginBottom: '24px' }}>
+          <div className="section-title">Participants</div>
+          <div className="participant-avatars">
+            {participant_names.map((name) => (
+              <div
+                key={name}
+                className="participant-avatar"
+                style={{ backgroundColor: getAvatarColor(name) }}
+                title={name}
+              >
+                {getInitial(name)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hc.Status === 'open' && (
+        <div style={{ marginBottom: '24px' }}>
+          <Link to={`/healthcheck/${id}/vote`} className="btn btn-primary btn-lg">
+            Cast Your Vote
+          </Link>
+        </div>
+      )}
+
+      <VoteProgress results={results} totalMetrics={results.length} />
+
+      <div className="glass-card" style={{ padding: 0 }}>
+        <div style={{ padding: '16px 20px 8px' }}>
+          <div className="section-title" style={{ margin: 0 }}>Results</div>
+        </div>
+        <div style={{ padding: '0 20px 8px' }}>
+          {results.map(metric => (
+            <MetricRow key={metric.MetricName} metric={metric} />
+          ))}
+        </div>
       </div>
     </div>
   )

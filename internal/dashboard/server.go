@@ -35,11 +35,18 @@ func RegisterRoutes(mux *http.ServeMux, store *storage.Store, logger *bolt.Logge
 	hub := NewHub(logger)
 	bus.Subscribe(hub)
 
-	// REST API
+	// REST API — GET
 	mux.HandleFunc("GET /api/teams", handleAPITeams(store))
+	mux.HandleFunc("GET /api/templates", handleAPITemplates(store))
 	mux.HandleFunc("GET /api/healthchecks", handleAPIHealthChecks(store))
 	mux.HandleFunc("GET /api/healthchecks/{id}", handleAPIHealthCheck(store))
 	mux.HandleFunc("GET /api/healthchecks/{id}/results", handleAPIResults(store))
+	mux.HandleFunc("GET /api/teams/{id}/trends", handleAPITeamTrends(store))
+
+	// REST API — POST
+	mux.HandleFunc("POST /api/healthchecks/{id}/vote", handleAPIVote(store))
+	mux.HandleFunc("POST /api/templates", handleAPICreateTemplate(store))
+	mux.HandleFunc("POST /api/teams/{id}/healthchecks", handleAPICreateHealthCheck(store))
 
 	// WebSocket
 	mux.HandleFunc("GET /ws", hub.HandleWebSocket)
