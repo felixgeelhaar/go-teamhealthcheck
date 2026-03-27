@@ -10,6 +10,7 @@ export function CreateHealthCheck() {
 
   const [name, setName] = useState('')
   const [templateId, setTemplateId] = useState('')
+  const [anonymous, setAnonymous] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -29,6 +30,7 @@ export function CreateHealthCheck() {
     const payload: CreateHealthCheckPayload = {
       name: name.trim(),
       template_id: templateId,
+      anonymous,
     }
 
     try {
@@ -120,6 +122,60 @@ export function CreateHealthCheck() {
               ))}
             </div>
           )}
+
+          <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--glass-border)' }}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              <span
+                role="checkbox"
+                aria-checked={anonymous}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault()
+                    setAnonymous(!anonymous)
+                  }
+                }}
+                onClick={() => setAnonymous(!anonymous)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: anonymous
+                    ? '2px solid var(--blue)'
+                    : '2px solid var(--glass-border)',
+                  background: anonymous
+                    ? 'var(--blue)'
+                    : 'rgba(255, 255, 255, 0.03)',
+                  transition: 'all var(--transition-fast)',
+                  flexShrink: 0,
+                  marginTop: '2px',
+                  color: 'white',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                }}
+              >
+                {anonymous ? '\u2713' : ''}
+              </span>
+              <span>
+                <span style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Anonymous voting
+                </span>
+                <span style={{ display: 'block', fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                  Participant names will be hidden in results
+                </span>
+              </span>
+            </label>
+          </div>
         </div>
 
         {error && (

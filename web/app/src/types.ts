@@ -11,6 +11,7 @@ export interface HealthCheck {
   TeamID: string
   TemplateID: string
   Name: string
+  Anonymous: boolean
   Status: 'open' | 'closed' | 'archived'
   CreatedAt: string
   ClosedAt: string | null
@@ -82,6 +83,21 @@ export interface CreateTemplatePayload {
 export interface CreateHealthCheckPayload {
   name: string
   template_id: string
+  anonymous?: boolean
+}
+
+export interface DiscussionTopic {
+  priority: number
+  metric: string
+  score: number
+  reason: string
+  data_points: string[]
+  suggested_questions: string[]
+}
+
+export interface DiscussionGuideResponse {
+  healthcheck_id: string
+  topics: DiscussionTopic[]
 }
 
 export interface WSEvent {

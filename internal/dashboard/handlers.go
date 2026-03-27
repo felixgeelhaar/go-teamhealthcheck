@@ -134,6 +134,14 @@ func handleAPIResults(store *storage.Store) http.HandlerFunc {
 			avgScore = totalScore / float64(totalVotes)
 		}
 
+		// Strip names and comments if anonymous
+		if hc.Anonymous {
+			participantNames = []string{}
+			for i := range results {
+				results[i].Comments = []string{}
+			}
+		}
+
 		writeJSON(w, map[string]any{
 			"healthcheck":       hc,
 			"results":           results,
@@ -249,6 +257,102 @@ func handleAPITeamTrends(store *storage.Store) http.HandlerFunc {
 			"team_id":  teamID,
 			"sessions": sessions,
 			"trends":   trends,
+		})
+	}
+}
+
+func handleAPIDiscussion(store *storage.Store) http.HandlerFunc {
+	type topic struct {
+		Priority   int      `json:"priority"`
+		Metric     string   `json:"metric"`
+		Score      float64  `json:"score"`
+		Reason     string   `json:"reason"`
+		DataPoints []string `json:"data_points"`
+		Questions  []string `json:"suggested_questions"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		hc, err := store.FindHealthCheckByID(id)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+		if hc == nil {
+			writeError(w, 404, "health check not found")
+			return
+		}
+
+		tmpl, err := store.FindTemplateByID(hc.TemplateID)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+
+		votes, err := store.FindVotesByHealthCheck(id)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+
+		results := domain.ComputeMetricResults(votes, tmpl.Metrics)
+
+		var topics []topic
+		priority := 1
+
+		for _, res := range results {
+			if res.TotalVotes == 0 {
+				continue
+			}
+
+			var reasons []string
+			var dataPoints []string
+			var questions []string
+
+			// High disagreement
+			if res.GreenCount > 0 && res.RedCount > 0 {
+				spread := float64(res.GreenCount-res.RedCount) / float64(res.TotalVotes)
+				if spread < 0.5 && spread > -0.5 {
+					reasons = append(reasons, "high disagreement")
+					dataPoints = append(dataPoints, fmt.Sprintf("Split vote: %d green, %d yellow, %d red", res.GreenCount, res.YellowCount, res.RedCount))
+					questions = append(questions, fmt.Sprintf("What different experiences lead to such varied opinions on %s?", res.MetricName))
+				}
+			}
+
+			// Low score
+			if res.Score < 2.0 {
+				reasons = append(reasons, "low score")
+				dataPoints = append(dataPoints, fmt.Sprintf("Score: %.1f/3.0", res.Score))
+				questions = append(questions, fmt.Sprintf("What specific changes would improve %s the most?", res.MetricName))
+			}
+
+			if len(reasons) > 0 {
+				reason := ""
+				for i, r := range reasons {
+					if i > 0 {
+						reason += " + "
+					}
+					reason += r
+				}
+				topics = append(topics, topic{
+					Priority:   priority,
+					Metric:     res.MetricName,
+					Score:      res.Score,
+					Reason:     reason,
+					DataPoints: dataPoints,
+					Questions:  questions,
+				})
+				priority++
+			}
+		}
+
+		if topics == nil {
+			topics = []topic{}
+		}
+
+		writeJSON(w, map[string]any{
+			"healthcheck_id": id,
+			"topics":         topics,
 		})
 	}
 }
@@ -409,6 +513,7 @@ func handleAPICreateHealthCheck(store *storage.Store) http.HandlerFunc {
 	type hcRequest struct {
 		Name       string `json:"name"`
 		TemplateID string `json:"template_id"`
+		Anonymous  bool   `json:"anonymous"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -452,6 +557,7 @@ func handleAPICreateHealthCheck(store *storage.Store) http.HandlerFunc {
 			TeamID:     teamID,
 			TemplateID: req.TemplateID,
 			Name:       req.Name,
+			Anonymous:  req.Anonymous,
 			Status:     domain.StatusOpen,
 			CreatedAt:  time.Now(),
 		}

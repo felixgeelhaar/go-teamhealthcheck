@@ -10,9 +10,9 @@ import (
 
 func (s *Store) CreateHealthCheck(hc *domain.HealthCheck) error {
 	_, err := s.db.Exec(
-		`INSERT INTO healthchecks (id, team_id, template_id, name, status, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		hc.ID, hc.TeamID, hc.TemplateID, hc.Name, hc.Status, hc.CreatedAt,
+		`INSERT INTO healthchecks (id, team_id, template_id, name, anonymous, status, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		hc.ID, hc.TeamID, hc.TemplateID, hc.Name, hc.Anonymous, hc.Status, hc.CreatedAt,
 	)
 	if err == nil {
 		s.publish(events.Event{
@@ -28,9 +28,9 @@ func (s *Store) FindHealthCheckByID(id string) (*domain.HealthCheck, error) {
 	hc := &domain.HealthCheck{}
 	var closedAt sql.NullTime
 	err := s.db.QueryRow(
-		`SELECT id, team_id, template_id, name, status, created_at, closed_at
+		`SELECT id, team_id, template_id, name, anonymous, status, created_at, closed_at
 		 FROM healthchecks WHERE id = ?`, id,
-	).Scan(&hc.ID, &hc.TeamID, &hc.TemplateID, &hc.Name, &hc.Status, &hc.CreatedAt, &closedAt)
+	).Scan(&hc.ID, &hc.TeamID, &hc.TemplateID, &hc.Name, &hc.Anonymous, &hc.Status, &hc.CreatedAt, &closedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -44,7 +44,7 @@ func (s *Store) FindHealthCheckByID(id string) (*domain.HealthCheck, error) {
 }
 
 func (s *Store) FindAllHealthChecks(filter domain.HealthCheckFilter) ([]*domain.HealthCheck, error) {
-	query := `SELECT id, team_id, template_id, name, status, created_at, closed_at FROM healthchecks WHERE 1=1`
+	query := `SELECT id, team_id, template_id, name, anonymous, status, created_at, closed_at FROM healthchecks WHERE 1=1`
 	var args []any
 
 	if filter.TeamID != nil {
@@ -75,7 +75,7 @@ func (s *Store) FindAllHealthChecks(filter domain.HealthCheckFilter) ([]*domain.
 	for rows.Next() {
 		hc := &domain.HealthCheck{}
 		var closedAt sql.NullTime
-		if err := rows.Scan(&hc.ID, &hc.TeamID, &hc.TemplateID, &hc.Name, &hc.Status, &hc.CreatedAt, &closedAt); err != nil {
+		if err := rows.Scan(&hc.ID, &hc.TeamID, &hc.TemplateID, &hc.Name, &hc.Anonymous, &hc.Status, &hc.CreatedAt, &closedAt); err != nil {
 			return nil, err
 		}
 		if closedAt.Valid {

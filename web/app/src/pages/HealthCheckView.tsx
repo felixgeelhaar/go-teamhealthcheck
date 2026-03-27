@@ -4,6 +4,8 @@ import { useWebSocket } from '../hooks/useWebSocket'
 import { MetricRow } from '../components/MetricRow'
 import { VoteProgress } from '../components/VoteProgress'
 import { StatusBadge } from '../components/StatusBadge'
+import { RadarChart } from '../components/RadarChart'
+import { DiscussionGuide } from '../components/DiscussionGuide'
 import { scoreColorClass, getAvatarColor, getInitial } from '../utils'
 import type { HealthCheckResults, WSEvent } from '../types'
 
@@ -42,6 +44,14 @@ export function HealthCheckView() {
           <div>
             <div className="page-header-meta">
               <StatusBadge status={hc.Status} />
+              {hc.Anonymous && (
+                <span className="status-badge" style={{
+                  background: 'var(--purple-dim)',
+                  color: 'var(--purple)',
+                }}>
+                  <span>{'\uD83D\uDD12'}</span> Anonymous
+                </span>
+              )}
             </div>
             <h1>{hc.Name}</h1>
           </div>
@@ -66,7 +76,7 @@ export function HealthCheckView() {
         </div>
       </div>
 
-      {participant_names && participant_names.length > 0 && (
+      {!hc.Anonymous && participant_names && participant_names.length > 0 && (
         <div style={{ marginBottom: '24px' }}>
           <div className="section-title">Participants</div>
           <div className="participant-avatars">
@@ -94,6 +104,10 @@ export function HealthCheckView() {
 
       <VoteProgress results={results} totalMetrics={results.length} />
 
+      {total_votes > 0 && results.length >= 3 && (
+        <RadarChart results={results} />
+      )}
+
       <div className="glass-card" style={{ padding: 0 }}>
         <div style={{ padding: '16px 20px 8px' }}>
           <div className="section-title" style={{ margin: 0 }}>Results</div>
@@ -104,6 +118,10 @@ export function HealthCheckView() {
           ))}
         </div>
       </div>
+
+      {total_votes > 0 && id && (
+        <DiscussionGuide healthcheckId={id} />
+      )}
     </div>
   )
 }

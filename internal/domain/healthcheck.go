@@ -17,6 +17,7 @@ type HealthCheck struct {
 	TeamID     string
 	TemplateID string
 	Name       string
+	Anonymous  bool
 	Status     Status
 	CreatedAt  time.Time
 	ClosedAt   *time.Time

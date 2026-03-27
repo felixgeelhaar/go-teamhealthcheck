@@ -153,6 +153,7 @@ CREATE TABLE IF NOT EXISTS healthchecks (
     team_id     TEXT NOT NULL REFERENCES teams(id),
     template_id TEXT NOT NULL REFERENCES templates(id),
     name        TEXT NOT NULL,
+    anonymous   BOOLEAN NOT NULL DEFAULT 0,
     status      TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'closed', 'archived')),
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     closed_at   DATETIME

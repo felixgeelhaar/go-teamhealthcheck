@@ -60,16 +60,30 @@ export function MetricRow({ metric }: Props) {
       </div>
 
       {expanded && (
-        <div className="metric-expanded">
-          <div className="metric-desc metric-desc-good">
-            <div className="metric-desc-label">What good looks like</div>
-            {metric.DescriptionGood}
+        <>
+          <div className="metric-expanded">
+            <div className="metric-desc metric-desc-good">
+              <div className="metric-desc-label">What good looks like</div>
+              {metric.DescriptionGood}
+            </div>
+            <div className="metric-desc metric-desc-bad">
+              <div className="metric-desc-label">What bad looks like</div>
+              {metric.DescriptionBad}
+            </div>
           </div>
-          <div className="metric-desc metric-desc-bad">
-            <div className="metric-desc-label">What bad looks like</div>
-            {metric.DescriptionBad}
-          </div>
-        </div>
+          {metric.Comments && metric.Comments.length > 0 && (
+            <div className="comments-list" style={{ paddingBottom: '16px' }}>
+              <div className="metric-desc-label" style={{ color: 'var(--text-tertiary)', marginBottom: '8px' }}>
+                Comments
+              </div>
+              {metric.Comments.map((comment, i) => (
+                <div key={i} className="comment-item">
+                  {comment}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
