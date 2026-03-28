@@ -9,8 +9,8 @@ import (
 	bolt "github.com/felixgeelhaar/bolt"
 	"github.com/google/uuid"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/storage"
 )
 
 func newTestStore(t *testing.T) *storage.Store {

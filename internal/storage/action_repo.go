@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
 )
 
 func (s *Store) CreateAction(a *domain.Action) error {

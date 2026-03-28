@@ -9,8 +9,8 @@ import (
 	"github.com/felixgeelhaar/mcp-go"
 	"github.com/google/uuid"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/storage"
 )
 
 type createTeamInput struct {

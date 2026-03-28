@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/mcpui"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/mcpui"
 )
 
 func TestVotingFormHTML(t *testing.T) {

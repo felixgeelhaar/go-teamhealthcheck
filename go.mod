@@ -1,4 +1,4 @@
-module github.com/felixgeelhaar/go-teamhealthcheck
+module github.com/felixgeelhaar/heartbeat
 
 go 1.25.0
 

@@ -26,7 +26,7 @@ import (
 	jira "github.com/felixgeelhaar/jirasdk"
 	"github.com/felixgeelhaar/jirasdk/core/issue"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/sdk"
+	"github.com/felixgeelhaar/heartbeat/sdk"
 )
 
 // JiraPlugin syncs health check action items to Jira issues.

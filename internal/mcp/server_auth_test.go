@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
 )
 
 // TestSubmitVote_WithComment verifies that a comment is properly stored with a vote.

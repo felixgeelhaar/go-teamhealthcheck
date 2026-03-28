@@ -17,7 +17,7 @@ Built with:
 
 ```bash
 # Build the binary
-go build ./cmd/healthcheck-mcp/
+go build ./cmd/heartbeat/
 
 # Run all tests
 go test -race ./...
@@ -29,10 +29,10 @@ go test -race -run TestTransition_OpenToClosedWithVotes ./internal/domain/
 go vet ./...
 
 # Run stdio mode
-go run ./cmd/healthcheck-mcp/ --db /tmp/test.db
+go run ./cmd/heartbeat/ --db /tmp/test.db
 
 # Run HTTP mode with dashboard
-go run ./cmd/healthcheck-mcp/ --mode http --addr :8080 --dashboard-addr :3000 --dev
+go run ./cmd/heartbeat/ --mode http --addr :8080 --dashboard-addr :3000 --dev
 
 # Build the React SPA (required before go build if SPA changed)
 cd web/app && npm install && ./node_modules/.bin/tsc && ./node_modules/.bin/vite build
@@ -45,7 +45,7 @@ cp dist/index.html ../../internal/dashboard/spa/index.html
 ## Architecture
 
 ```
-cmd/healthcheck-mcp/main.go       → Entry point: bolt logger, dual transport, event bus, dashboard server
+cmd/heartbeat/main.go       → Entry point: bolt logger, dual transport, event bus, dashboard server
 internal/auth/config.go            → Auth config loader (token → user identity mapping)
 internal/domain/                   → Pure domain: entities, value objects, state machine
 internal/events/bus.go             → Event bus: pub/sub for real-time updates

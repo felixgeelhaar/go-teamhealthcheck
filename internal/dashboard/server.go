@@ -7,8 +7,8 @@ import (
 
 	bolt "github.com/felixgeelhaar/bolt"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
+	"github.com/felixgeelhaar/heartbeat/internal/events"
+	"github.com/felixgeelhaar/heartbeat/internal/storage"
 )
 
 //go:embed spa/index.html

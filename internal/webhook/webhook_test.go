@@ -12,8 +12,8 @@ import (
 
 	bolt "github.com/felixgeelhaar/bolt"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/webhook"
+	"github.com/felixgeelhaar/heartbeat/internal/events"
+	"github.com/felixgeelhaar/heartbeat/internal/webhook"
 )
 
 // captureServer returns an httptest.Server that records all POST bodies.

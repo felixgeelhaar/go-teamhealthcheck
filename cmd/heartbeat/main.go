@@ -15,27 +15,27 @@ import (
 	"github.com/felixgeelhaar/mcp-go"
 	"github.com/felixgeelhaar/mcp-go/middleware"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/auth"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/config"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/dashboard"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/lifecycle"
-	mcptools "github.com/felixgeelhaar/go-teamhealthcheck/internal/mcp"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/webhook"
-	"github.com/felixgeelhaar/go-teamhealthcheck/sdk"
+	"github.com/felixgeelhaar/heartbeat/internal/auth"
+	"github.com/felixgeelhaar/heartbeat/internal/config"
+	"github.com/felixgeelhaar/heartbeat/internal/dashboard"
+	"github.com/felixgeelhaar/heartbeat/internal/events"
+	"github.com/felixgeelhaar/heartbeat/internal/lifecycle"
+	mcptools "github.com/felixgeelhaar/heartbeat/internal/mcp"
+	"github.com/felixgeelhaar/heartbeat/internal/storage"
+	"github.com/felixgeelhaar/heartbeat/internal/webhook"
+	"github.com/felixgeelhaar/heartbeat/sdk"
 
 	// Import plugins — each plugin's init() calls sdk.Register()
-	_ "github.com/felixgeelhaar/go-teamhealthcheck/plugins/jira"
-	_ "github.com/felixgeelhaar/go-teamhealthcheck/plugins/linear"
-	_ "github.com/felixgeelhaar/go-teamhealthcheck/plugins/retro"
+	_ "github.com/felixgeelhaar/heartbeat/plugins/jira"
+	_ "github.com/felixgeelhaar/heartbeat/plugins/linear"
+	_ "github.com/felixgeelhaar/heartbeat/plugins/retro"
 )
 
 func main() {
 	home, _ := os.UserHomeDir()
-	defaultDB := filepath.Join(home, ".healthcheck-mcp", "data.db")
-	defaultAuth := filepath.Join(home, ".healthcheck-mcp", "auth.json")
-	defaultConfig := filepath.Join(home, ".healthcheck-mcp", "config.yaml")
+	defaultDB := filepath.Join(home, ".heartbeat", "data.db")
+	defaultAuth := filepath.Join(home, ".heartbeat", "auth.json")
+	defaultConfig := filepath.Join(home, ".heartbeat", "config.yaml")
 
 	dbPath := flag.String("db", defaultDB, "Path to SQLite database file")
 	mode := flag.String("mode", "stdio", "Transport mode: stdio or http")

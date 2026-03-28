@@ -1,6 +1,6 @@
 package retro
 
-import "github.com/felixgeelhaar/go-teamhealthcheck/sdk"
+import "github.com/felixgeelhaar/heartbeat/sdk"
 
 func init() {
 	sdk.Register(&RetroPlugin{})

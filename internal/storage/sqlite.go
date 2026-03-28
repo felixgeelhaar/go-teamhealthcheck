@@ -9,8 +9,8 @@ import (
 	bolt "github.com/felixgeelhaar/bolt"
 	_ "modernc.org/sqlite"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/seed"
+	"github.com/felixgeelhaar/heartbeat/internal/events"
+	"github.com/felixgeelhaar/heartbeat/internal/seed"
 	"github.com/google/uuid"
 )
 

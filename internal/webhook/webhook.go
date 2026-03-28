@@ -10,7 +10,7 @@ import (
 
 	bolt "github.com/felixgeelhaar/bolt"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
+	"github.com/felixgeelhaar/heartbeat/internal/events"
 )
 
 // Config holds webhook configuration.

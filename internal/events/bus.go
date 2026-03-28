@@ -3,7 +3,7 @@ package events
 import (
 	"sync"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/sdk"
+	"github.com/felixgeelhaar/heartbeat/sdk"
 )
 
 // EventType and Event are aliased from the SDK package to avoid duplication.

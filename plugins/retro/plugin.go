@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/sdk"
+	"github.com/felixgeelhaar/heartbeat/sdk"
 	"github.com/google/uuid"
 )
 

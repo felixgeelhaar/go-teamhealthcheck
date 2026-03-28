@@ -5,7 +5,7 @@ import (
 	"html"
 	"strings"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
 )
 
 // ResultsViewHTML generates a self-contained HTML results heatmap for MCP Apps.

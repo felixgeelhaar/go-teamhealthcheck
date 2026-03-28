@@ -12,10 +12,10 @@ import (
 	"github.com/felixgeelhaar/mcp-go/testutil"
 	"github.com/google/uuid"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/lifecycle"
-	mcptools "github.com/felixgeelhaar/go-teamhealthcheck/internal/mcp"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/lifecycle"
+	mcptools "github.com/felixgeelhaar/heartbeat/internal/mcp"
+	"github.com/felixgeelhaar/heartbeat/internal/storage"
 )
 
 // newTestServerWithStore creates an MCP test client and returns both the client and the store.

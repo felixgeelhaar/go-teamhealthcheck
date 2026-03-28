@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/events"
 )
 
 func (s *Store) CreateHealthCheck(hc *domain.HealthCheck) error {

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
 )
 
 func (s *Store) CreateTemplate(tmpl *domain.Template) error {

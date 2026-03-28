@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/auth"
+	"github.com/felixgeelhaar/heartbeat/internal/auth"
 )
 
 func TestLoadConfig(t *testing.T) {

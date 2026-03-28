@@ -8,9 +8,9 @@ import (
 	bolt "github.com/felixgeelhaar/bolt"
 	"github.com/felixgeelhaar/mcp-go/testutil"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/lifecycle"
-	mcptools "github.com/felixgeelhaar/go-teamhealthcheck/internal/mcp"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
+	"github.com/felixgeelhaar/heartbeat/internal/lifecycle"
+	mcptools "github.com/felixgeelhaar/heartbeat/internal/mcp"
+	"github.com/felixgeelhaar/heartbeat/internal/storage"
 )
 
 func newTestServer(t *testing.T) *testutil.TestClient {

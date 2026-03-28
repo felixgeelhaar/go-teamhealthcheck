@@ -7,8 +7,8 @@ import (
 
 	bolt "github.com/felixgeelhaar/bolt"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/lifecycle"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/lifecycle"
 )
 
 func newLifecycle(t *testing.T) *lifecycle.StatekitLifecycle {

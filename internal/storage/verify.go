@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
+import "github.com/felixgeelhaar/heartbeat/internal/domain"
 
 // Compile-time verification that *Store implements all domain repository interfaces.
 var (

@@ -3,7 +3,7 @@ package seed_test
 import (
 	"testing"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/seed"
+	"github.com/felixgeelhaar/heartbeat/internal/seed"
 )
 
 func validateTemplate(t *testing.T, tmpl interface {

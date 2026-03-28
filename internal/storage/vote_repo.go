@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/events"
 )
 
 func (s *Store) UpsertVote(vote *domain.Vote) error {

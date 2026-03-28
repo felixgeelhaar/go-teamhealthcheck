@@ -1,0 +1,54 @@
+version: 2
+
+project_name: heartbeat
+
+builds:
+  - id: heartbeat
+    main: ./cmd/heartbeat/
+    binary: heartbeat
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+
+archives:
+  - id: heartbeat
+    builds:
+      - heartbeat
+    name_template: "heartbeat_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+brews:
+  - name: heartbeat
+    repository:
+      owner: felixgeelhaar
+      name: homebrew-tap
+    homepage: "https://github.com/felixgeelhaar/heartbeat"
+    description: "MCP server for running team health checks with AI agents"
+    license: "MIT"
+    install: |
+      bin.install "heartbeat"
+    test: |
+      system "#{bin}/heartbeat", "--help"

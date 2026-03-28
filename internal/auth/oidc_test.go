@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/auth"
+	"github.com/felixgeelhaar/heartbeat/internal/auth"
 )
 
 func TestNewOIDCValidator_MissingConfig(t *testing.T) {

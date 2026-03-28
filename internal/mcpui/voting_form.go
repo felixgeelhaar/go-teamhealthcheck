@@ -5,7 +5,7 @@ import (
 	"html"
 	"strings"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
 )
 
 // VotingFormHTML generates a self-contained HTML voting form for MCP Apps.

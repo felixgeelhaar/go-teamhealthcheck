@@ -29,7 +29,7 @@ export function Navbar({ onChangeNameClick, plugins }: Props) {
     <nav className="navbar">
       <Link to="/" className="navbar-brand">
         <span className="pulse-dot" />
-        Health Check
+        Heartbeat
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

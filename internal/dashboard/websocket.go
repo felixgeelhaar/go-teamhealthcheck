@@ -9,7 +9,7 @@ import (
 	bolt "github.com/felixgeelhaar/bolt"
 	"github.com/gorilla/websocket"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
+	"github.com/felixgeelhaar/heartbeat/internal/events"
 )
 
 var upgrader = websocket.Upgrader{

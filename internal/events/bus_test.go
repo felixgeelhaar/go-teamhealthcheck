@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
+	"github.com/felixgeelhaar/heartbeat/internal/events"
 )
 
 func TestBus_PublishToSubscribers(t *testing.T) {

@@ -1,6 +1,6 @@
 package seed
 
-import "github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
+import "github.com/felixgeelhaar/heartbeat/internal/domain"
 
 // TuckmanTemplate returns a team maturity assessment based on Tuckman's stages of group development.
 func TuckmanTemplate() domain.Template {

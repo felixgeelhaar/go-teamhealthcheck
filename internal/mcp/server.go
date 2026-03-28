@@ -7,15 +7,15 @@ import (
 	bolt "github.com/felixgeelhaar/bolt"
 	"github.com/felixgeelhaar/mcp-go"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/mcpui"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/mcpui"
+	"github.com/felixgeelhaar/heartbeat/internal/storage"
 )
 
 // NewServer creates a fully configured MCP server with all health check tools registered.
 func NewServer(store *storage.Store, logger *bolt.Logger, lc domain.HealthCheckLifecycle) *mcp.Server {
 	srv := mcp.NewServer(mcp.ServerInfo{
-		Name:    "healthcheck-mcp",
+		Name:    "heartbeat",
 		Version: "1.0.0",
 	})
 

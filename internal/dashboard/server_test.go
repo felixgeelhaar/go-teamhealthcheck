@@ -11,10 +11,10 @@ import (
 	bolt "github.com/felixgeelhaar/bolt"
 	"github.com/google/uuid"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/dashboard"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
+	"github.com/felixgeelhaar/heartbeat/internal/dashboard"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/events"
+	"github.com/felixgeelhaar/heartbeat/internal/storage"
 )
 
 func setupDashboard(t *testing.T) (*dashboard.Server, *storage.Store) {

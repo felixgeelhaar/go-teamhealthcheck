@@ -1,6 +1,6 @@
 package seed
 
-import "github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
+import "github.com/felixgeelhaar/heartbeat/internal/domain"
 
 // SpotifyTemplate returns the original Spotify Squad Health Check template.
 // Based on Henrik Kniberg's model: https://labs.spotify.com/2014/09/16/squad-health-check-model/

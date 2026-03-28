@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
-	"github.com/felixgeelhaar/go-teamhealthcheck/sdk"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/storage"
+	"github.com/felixgeelhaar/heartbeat/sdk"
 )
 
 func newSDKAdapter(t *testing.T) (*storage.Store, *storage.SDKStoreReader) {

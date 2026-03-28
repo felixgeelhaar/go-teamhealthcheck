@@ -1,4 +1,4 @@
-# healthcheck-mcp
+# heartbeat
 
 An MCP (Model Context Protocol) server for running Spotify Squad Health Checks with AI agents.
 
@@ -24,22 +24,28 @@ Let AI facilitate team health checks directly in conversations — collecting vo
 
 ## Installation
 
+### Homebrew
+
+```bash
+brew install felixgeelhaar/tap/heartbeat
+```
+
 ### From source
 
 ```bash
-go install github.com/felixgeelhaar/go-teamhealthcheck/cmd/healthcheck-mcp@latest
+go install github.com/felixgeelhaar/heartbeat/cmd/heartbeat@latest
 ```
 
 ### From release
 
-Download a pre-built binary from [Releases](https://github.com/felixgeelhaar/go-teamhealthcheck/releases).
+Download a pre-built binary from [Releases](https://github.com/felixgeelhaar/heartbeat/releases).
 
 ## Usage
 
 ### Single-user (stdio)
 
 ```bash
-healthcheck-mcp
+heartbeat
 ```
 
 For use with Claude Desktop, add to `claude_desktop_config.json`:
@@ -48,7 +54,7 @@ For use with Claude Desktop, add to `claude_desktop_config.json`:
 {
   "mcpServers": {
     "healthcheck": {
-      "command": "healthcheck-mcp",
+      "command": "heartbeat",
       "args": []
     }
   }
@@ -58,7 +64,7 @@ For use with Claude Desktop, add to `claude_desktop_config.json`:
 ### Multi-user (HTTP/SSE) with Dashboard
 
 ```bash
-healthcheck-mcp --mode http --addr :8080 --dashboard-addr :3000
+heartbeat --mode http --addr :8080 --dashboard-addr :3000
 ```
 
 Multiple team members connect their MCP clients to the same server. Each authenticates with a Bearer token that maps to their identity. The live dashboard is available at `http://localhost:3000`.
@@ -70,13 +76,13 @@ Multiple team members connect their MCP clients to the same server. Each authent
 | `--mode` | `stdio` | Transport: `stdio` or `http` |
 | `--addr` | `:8080` | HTTP listen address |
 | `--dashboard-addr` | `:3000` | Dashboard HTTP listen address (empty to disable) |
-| `--db` | `~/.healthcheck-mcp/data.db` | SQLite database path |
-| `--auth` | `~/.healthcheck-mcp/auth.json` | Auth config file (HTTP mode) |
+| `--db` | `~/.heartbeat/data.db` | SQLite database path |
+| `--auth` | `~/.heartbeat/auth.json` | Auth config file (HTTP mode) |
 | `--dev` | `false` | Development mode (colored console logging) |
 
 ### Auth Configuration
 
-Create `~/.healthcheck-mcp/auth.json`:
+Create `~/.heartbeat/auth.json`:
 
 ```json
 {
@@ -192,7 +198,7 @@ These are self-contained HTML documents rendered in a sandboxed iframe.
 
 ```
 # Team lead starts the server with dashboard
-healthcheck-mcp --mode http --addr :8080 --dashboard-addr :3000
+heartbeat --mode http --addr :8080 --dashboard-addr :3000
 
 # Each team member connects their AI client with their token
 # Alice's session:
@@ -242,7 +248,7 @@ cp dist/index.html ../../internal/dashboard/spa/index.html
 cd ../..
 
 # 2. Build the Go binary (SPA is embedded)
-go build -o healthcheck-mcp ./cmd/healthcheck-mcp/
+go build -o heartbeat ./cmd/heartbeat/
 ```
 
 The SPA only needs rebuilding when `web/app/src/` changes. The Go binary embeds the built HTML file, so the final artifact is a single binary with no runtime dependencies.

@@ -8,7 +8,7 @@ import (
 	bolt "github.com/felixgeelhaar/bolt"
 	"github.com/felixgeelhaar/statekit"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
 )
 
 type healthCheckContext struct {

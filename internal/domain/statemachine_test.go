@@ -3,7 +3,7 @@ package domain_test
 import (
 	"testing"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
 )
 
 func TestCastVote_OnOpenHealthCheck(t *testing.T) {

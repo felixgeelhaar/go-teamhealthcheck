@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/config"
+	"github.com/felixgeelhaar/heartbeat/internal/config"
 )
 
 func TestLoad_MissingFile(t *testing.T) {

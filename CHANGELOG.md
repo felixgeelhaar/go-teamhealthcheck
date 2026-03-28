@@ -6,7 +6,7 @@
 
 - Complete pivot from Go library to MCP server product
 - Removed `Indicator` and `HealthMetric` exported types (replaced by internal domain model)
-- Module now provides `cmd/healthcheck-mcp` binary instead of importable package
+- Module now provides `cmd/heartbeat` binary instead of importable package
 
 ### Features
 

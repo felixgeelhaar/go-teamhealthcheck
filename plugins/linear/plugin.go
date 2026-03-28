@@ -22,7 +22,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/felixgeelhaar/go-teamhealthcheck/sdk"
+	"github.com/felixgeelhaar/heartbeat/sdk"
 )
 
 // LinearPlugin syncs health check action items to Linear issues.

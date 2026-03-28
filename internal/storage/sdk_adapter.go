@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"github.com/felixgeelhaar/go-teamhealthcheck/internal/domain"
-	"github.com/felixgeelhaar/go-teamhealthcheck/sdk"
+	"github.com/felixgeelhaar/heartbeat/internal/domain"
+	"github.com/felixgeelhaar/heartbeat/sdk"
 )
 
 // SDKStoreReader adapts *Store to sdk.StoreReader by converting domain types to SDK types.
