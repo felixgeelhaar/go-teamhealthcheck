@@ -83,6 +83,11 @@ func New(dbPath string, logger *bolt.Logger) (*Store, error) {
 	return s, nil
 }
 
+// DB returns the underlying database handle for plugin access.
+func (s *Store) DB() *sql.DB {
+	return s.db
+}
+
 // Close closes the underlying database connection.
 func (s *Store) Close() error {
 	return s.db.Close()

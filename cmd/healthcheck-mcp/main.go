@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"net/http"
 	"os"
@@ -15,21 +16,28 @@ import (
 	"github.com/felixgeelhaar/mcp-go/middleware"
 
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/auth"
+	"github.com/felixgeelhaar/go-teamhealthcheck/internal/config"
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/dashboard"
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
 	mcptools "github.com/felixgeelhaar/go-teamhealthcheck/internal/mcp"
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
+	"github.com/felixgeelhaar/go-teamhealthcheck/sdk"
+
+	// Import plugins — each plugin's init() calls sdk.Register()
+	_ "github.com/felixgeelhaar/go-teamhealthcheck/plugins/retro"
 )
 
 func main() {
 	home, _ := os.UserHomeDir()
 	defaultDB := filepath.Join(home, ".healthcheck-mcp", "data.db")
 	defaultAuth := filepath.Join(home, ".healthcheck-mcp", "auth.json")
+	defaultConfig := filepath.Join(home, ".healthcheck-mcp", "config.yaml")
 
 	dbPath := flag.String("db", defaultDB, "Path to SQLite database file")
 	mode := flag.String("mode", "stdio", "Transport mode: stdio or http")
 	addr := flag.String("addr", ":8080", "HTTP listen address (only used with --mode http)")
-	authConfig := flag.String("auth", defaultAuth, "Path to auth config file (only used with --mode http)")
+	authConfigPath := flag.String("auth", defaultAuth, "Path to auth config file (only used with --mode http)")
+	configPath := flag.String("config", defaultConfig, "Path to config file")
 	dashboardAddr := flag.String("dashboard-addr", ":3000", "Dashboard HTTP listen address (empty to disable)")
 	dev := flag.Bool("dev", false, "Development mode (colored console logging)")
 	flag.Parse()
@@ -43,6 +51,9 @@ func main() {
 	}
 	logger := bolt.New(handler)
 
+	// Load config
+	cfg := config.Load(*configPath)
+
 	store, err := storage.New(*dbPath, logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to initialize storage")
@@ -55,6 +66,60 @@ func main() {
 
 	srv := mcptools.NewServer(store, logger)
 
+	// Initialize enabled plugins
+	storeReader := storage.NewSDKStoreReader(store)
+	var enabledPlugins []sdk.Plugin
+	var pluginManifest []sdk.UIEntry
+
+	for _, p := range sdk.All() {
+		if !cfg.IsPluginEnabled(p.Name()) {
+			logger.Debug().Str("plugin", p.Name()).Msg("plugin disabled")
+			continue
+		}
+
+		pluginCtx := sdk.PluginContext{
+			Store:  storeReader,
+			DB:     store.DB(),
+			Logger: &boltLoggerAdapter{logger},
+			Bus:    &eventBusAdapter{bus},
+		}
+
+		if err := p.Init(pluginCtx); err != nil {
+			logger.Error().Err(err).Str("plugin", p.Name()).Msg("plugin init failed")
+			continue
+		}
+
+		if m, ok := p.(sdk.Migrator); ok {
+			if err := m.Migrate(store.DB()); err != nil {
+				logger.Error().Err(err).Str("plugin", p.Name()).Msg("plugin migration failed")
+				continue
+			}
+		}
+
+		if tp, ok := p.(sdk.ToolProvider); ok {
+			tp.RegisterTools(&mcpToolRegistryAdapter{srv})
+		}
+
+		if el, ok := p.(sdk.EventListener); ok {
+			bus.Subscribe(events.ListenerFunc(func(e events.Event) {
+				el.OnEvent(sdk.Event{
+					Type:          sdk.EventType(e.Type),
+					HealthCheckID: e.HealthCheckID,
+					TeamID:        e.TeamID,
+					Participant:   e.Participant,
+					MetricName:    e.MetricName,
+				})
+			}))
+		}
+
+		if up, ok := p.(sdk.UIProvider); ok {
+			pluginManifest = append(pluginManifest, up.UIManifest()...)
+		}
+
+		enabledPlugins = append(enabledPlugins, p)
+		logger.Info().Str("plugin", p.Name()).Str("version", p.Version()).Msg("plugin loaded")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -66,12 +131,31 @@ func main() {
 	// Start dashboard server if configured
 	var dashSrv *dashboard.Server
 	if *dashboardAddr != "" {
-		dashSrv = dashboard.New(dashboard.Config{
+		dashCfg := dashboard.Config{
 			Addr:   *dashboardAddr,
 			Store:  store,
 			Bus:    bus,
 			Logger: logger,
+		}
+		dashSrv = dashboard.New(dashCfg)
+
+		// Register plugin routes on the dashboard mux
+		for _, p := range enabledPlugins {
+			if rp, ok := p.(sdk.RouteProvider); ok {
+				rp.RegisterRoutes(dashSrv.Mux())
+			}
+		}
+
+		// Plugin manifest endpoint
+		dashSrv.Mux().HandleFunc("GET /api/plugins", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if pluginManifest == nil {
+				json.NewEncoder(w).Encode([]sdk.UIEntry{})
+			} else {
+				json.NewEncoder(w).Encode(pluginManifest)
+			}
 		})
+
 		go func() {
 			if err := dashSrv.Start(); err != nil && err != http.ErrServerClosed {
 				logger.Error().Err(err).Msg("dashboard server error")
@@ -81,16 +165,14 @@ func main() {
 
 	switch *mode {
 	case "http":
-		// Build middleware chain for HTTP mode
 		var middlewares []middleware.Middleware
 		middlewares = append(middlewares,
 			middleware.Recover(),
 			middleware.Timeout(30*time.Second),
 		)
 
-		// Load auth config if it exists
-		if tokenValidator, err := auth.LoadConfig(*authConfig); err == nil {
-			logger.Info().Str("config", *authConfig).Msg("auth enabled")
+		if tokenValidator, err := auth.LoadConfig(*authConfigPath); err == nil {
+			logger.Info().Str("config", *authConfigPath).Msg("auth enabled")
 			middlewares = append(middlewares,
 				middleware.Auth(
 					middleware.BearerTokenAuthenticator(tokenValidator),
@@ -120,10 +202,79 @@ func main() {
 		}
 	}
 
-	// Graceful shutdown of dashboard
 	if dashSrv != nil {
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()
 		dashSrv.Shutdown(shutdownCtx)
 	}
+}
+
+// --- Adapters to bridge internal types to SDK interfaces ---
+
+type boltLoggerAdapter struct {
+	l *bolt.Logger
+}
+
+type boltLogEventAdapter struct {
+	e interface {
+		Str(string, string) *bolt.Event
+		Int(string, int) *bolt.Event
+		Err(error) *bolt.Event
+		Msg(string)
+	}
+}
+
+func (a *boltLoggerAdapter) Info() sdk.LogEvent  { return &boltLogEventAdapter{a.l.Info()} }
+func (a *boltLoggerAdapter) Debug() sdk.LogEvent { return &boltLogEventAdapter{a.l.Debug()} }
+func (a *boltLoggerAdapter) Error() sdk.LogEvent { return &boltLogEventAdapter{a.l.Error()} }
+func (a *boltLoggerAdapter) Warn() sdk.LogEvent  { return &boltLogEventAdapter{a.l.Warn()} }
+
+func (a *boltLogEventAdapter) Str(key, val string) sdk.LogEvent {
+	a.e.Str(key, val)
+	return a
+}
+func (a *boltLogEventAdapter) Int(key string, val int) sdk.LogEvent {
+	a.e.Int(key, val)
+	return a
+}
+func (a *boltLogEventAdapter) Err(err error) sdk.LogEvent {
+	a.e.Err(err)
+	return a
+}
+func (a *boltLogEventAdapter) Msg(msg string) {
+	a.e.Msg(msg)
+}
+
+type mcpToolRegistryAdapter struct {
+	srv *mcp.Server
+}
+
+func (a *mcpToolRegistryAdapter) RegisterPluginTool(name, description string, handler any) {
+	a.srv.Tool(name).Description(description).Handler(handler)
+}
+
+type eventBusAdapter struct {
+	bus *events.Bus
+}
+
+func (a *eventBusAdapter) Subscribe(l sdk.EventListener) {
+	a.bus.Subscribe(events.ListenerFunc(func(e events.Event) {
+		l.OnEvent(sdk.Event{
+			Type:          sdk.EventType(e.Type),
+			HealthCheckID: e.HealthCheckID,
+			TeamID:        e.TeamID,
+			Participant:   e.Participant,
+			MetricName:    e.MetricName,
+		})
+	}))
+}
+
+func (a *eventBusAdapter) Publish(e sdk.Event) {
+	a.bus.Publish(events.Event{
+		Type:          events.EventType(e.Type),
+		HealthCheckID: e.HealthCheckID,
+		TeamID:        e.TeamID,
+		Participant:   e.Participant,
+		MetricName:    e.MetricName,
+	})
 }

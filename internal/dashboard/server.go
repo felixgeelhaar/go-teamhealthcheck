@@ -24,6 +24,7 @@ type Config struct {
 
 // Server is the dashboard HTTP server with REST API and WebSocket support.
 type Server struct {
+	mux     *http.ServeMux
 	httpSrv *http.Server
 	hub     *Hub
 	logger  *bolt.Logger
@@ -70,6 +71,11 @@ func RegisterRoutes(mux *http.ServeMux, store *storage.Store, logger *bolt.Logge
 	return hub
 }
 
+// Mux returns the underlying ServeMux for plugin route registration.
+func (s *Server) Mux() *http.ServeMux {
+	return s.mux
+}
+
 // New creates a new dashboard server.
 func New(cfg Config) *Server {
 	mux := http.NewServeMux()
@@ -79,6 +85,7 @@ func New(cfg Config) *Server {
 	handler := corsMiddleware(mux)
 
 	return &Server{
+		mux: mux,
 		httpSrv: &http.Server{
 			Addr:    cfg.Addr,
 			Handler: handler,

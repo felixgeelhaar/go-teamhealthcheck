@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useParticipant } from '../hooks/useParticipant'
+import type { PluginEntry } from '../types'
 
 function getAvatarColor(name: string): string {
   const colors = ['#3b82f6', '#a855f7', '#ec4899', '#f97316', '#14b8a6', '#6366f1']
@@ -16,10 +17,13 @@ function getInitial(name: string): string {
 
 interface Props {
   onChangeNameClick: () => void
+  plugins: PluginEntry[]
 }
 
-export function Navbar({ onChangeNameClick }: Props) {
+export function Navbar({ onChangeNameClick, plugins }: Props) {
   const { name } = useParticipant()
+
+  const mainPlugins = plugins.filter(p => p.nav_pos === 'main')
 
   return (
     <nav className="navbar">
@@ -32,6 +36,15 @@ export function Navbar({ onChangeNameClick }: Props) {
         <Link to="/compare" className="btn btn-ghost btn-sm">
           {'\uD83C\uDFE2'} Compare Teams
         </Link>
+        {mainPlugins.map(plugin => (
+          <Link
+            key={plugin.name}
+            to={plugin.route}
+            className="btn btn-ghost btn-sm"
+          >
+            {plugin.icon} {plugin.label}
+          </Link>
+        ))}
         {name && (
           <div className="navbar-user" onClick={onChangeNameClick}>
             <div

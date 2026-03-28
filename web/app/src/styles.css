@@ -954,6 +954,139 @@ a {
   border-left: 2px solid var(--glass-border);
 }
 
+/* Retro Page */
+.retro-columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.retro-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.retro-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-left: 3px solid;
+  margin-bottom: 12px;
+  background: var(--glass-bg);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.retro-column-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.retro-column-count {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.retro-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 60px;
+}
+
+.retro-item {
+  padding: 12px !important;
+}
+
+.retro-item-text {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+
+.retro-item-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.retro-item-author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.retro-item-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.retro-item-author-name {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.retro-vote-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all var(--transition-fast);
+}
+
+.retro-vote-btn:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+}
+
+.retro-vote-count {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.retro-empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.retro-add-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.retro-add-input {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .app-content {
@@ -1001,5 +1134,9 @@ a {
   .vote-circle {
     width: 48px;
     height: 48px;
+  }
+
+  .retro-columns {
+    grid-template-columns: 1fr;
   }
 }

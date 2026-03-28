@@ -8,13 +8,14 @@ import { RadarChart } from '../components/RadarChart'
 import { DiscussionGuide } from '../components/DiscussionGuide'
 import { ActionItems } from '../components/ActionItems'
 import { scoreColorClass, getAvatarColor, getInitial } from '../utils'
-import type { HealthCheckResults, WSEvent } from '../types'
+import type { HealthCheckResults, PluginEntry, WSEvent } from '../types'
 
 export function HealthCheckView() {
   const { id } = useParams<{ id: string }>()
   const { data, loading, refetch } = useApi<HealthCheckResults>(
     id ? `/api/healthchecks/${id}/results` : null
   )
+  const { data: plugins } = useApi<PluginEntry[]>('/api/plugins')
 
   useWebSocket((event: WSEvent) => {
     if (event.healthcheck_id === id) {
@@ -109,6 +110,22 @@ export function HealthCheckView() {
           {'\u2B07'} Download CSV
         </a>
       </div>
+
+      {(plugins || []).filter(p => p.nav_pos === 'healthcheck').length > 0 && (
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+          {(plugins || [])
+            .filter(p => p.nav_pos === 'healthcheck')
+            .map(plugin => (
+              <Link
+                key={plugin.name}
+                to={plugin.route.replace(':hcId', id || '')}
+                className="btn btn-secondary"
+              >
+                {plugin.icon} {plugin.label}
+              </Link>
+            ))}
+        </div>
+      )}
 
       <VoteProgress results={results} totalMetrics={results.length} />
 

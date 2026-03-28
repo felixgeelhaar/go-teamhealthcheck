@@ -119,3 +119,32 @@ export interface WSEvent {
   participant?: string
   metric_name?: string
 }
+
+export interface PluginEntry {
+  name: string
+  label: string
+  icon: string
+  route: string
+  nav_pos: string
+}
+
+export interface RetroItem {
+  id: string
+  session_id: string
+  category: 'went_well' | 'to_improve' | 'action_item'
+  text: string
+  author: string
+  votes: number
+  created_at: string
+}
+
+export interface RetroSession {
+  id: string
+  healthcheck_id: string
+  created_at: string
+}
+
+export interface RetroResponse {
+  session: RetroSession | null
+  items: RetroItem[]
+}
