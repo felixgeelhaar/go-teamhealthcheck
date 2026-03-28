@@ -13,12 +13,7 @@ import (
 )
 
 // NewServer creates a fully configured MCP server with all health check tools registered.
-func NewServer(store *storage.Store, logger *bolt.Logger) *mcp.Server {
-	sm, err := domain.NewHealthCheckStateMachine(logger)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to build health check state machine")
-	}
-
+func NewServer(store *storage.Store, logger *bolt.Logger, lc domain.HealthCheckLifecycle) *mcp.Server {
 	srv := mcp.NewServer(mcp.ServerInfo{
 		Name:    "healthcheck-mcp",
 		Version: "1.0.0",
@@ -26,7 +21,7 @@ func NewServer(store *storage.Store, logger *bolt.Logger) *mcp.Server {
 
 	registerTeamTools(srv, store, logger)
 	registerTemplateTools(srv, store, logger)
-	registerHealthCheckTools(srv, store, logger, sm)
+	registerHealthCheckTools(srv, store, logger, lc)
 	registerVoteTools(srv, store, logger)
 	registerCompareTools(srv, store, logger)
 	registerAnalyzeTools(srv, store, logger)
@@ -36,7 +31,6 @@ func NewServer(store *storage.Store, logger *bolt.Logger) *mcp.Server {
 }
 
 func registerUIResources(srv *mcp.Server, store *storage.Store) {
-	// Voting form UI — renders all metrics for a health check
 	srv.Resource("ui://healthcheck/{id}/vote").
 		Name("Health Check Voting Form").
 		Description("Interactive voting form for a health check session").
@@ -58,7 +52,6 @@ func registerUIResources(srv *mcp.Server, store *storage.Store) {
 			}, nil
 		})
 
-	// Results view UI — renders traffic-light heatmap
 	srv.Resource("ui://healthcheck/{id}/results").
 		Name("Health Check Results").
 		Description("Visual results heatmap for a health check session").
@@ -78,26 +71,12 @@ func registerUIResources(srv *mcp.Server, store *storage.Store) {
 				return nil, err
 			}
 			results := domain.ComputeMetricResults(votes, tmpl.Metrics)
-
-			var totalScore float64
-			var totalVotes int
-			participants := make(map[string]bool)
-			for _, v := range votes {
-				participants[v.Participant] = true
-			}
-			for _, r := range results {
-				totalScore += r.Score * float64(r.TotalVotes)
-				totalVotes += r.TotalVotes
-			}
-			var avgScore float64
-			if totalVotes > 0 {
-				avgScore = totalScore / float64(totalVotes)
-			}
+			avgScore, _, _ := domain.ComputeOverallScore(results, votes)
 
 			return &mcp.ResourceContent{
 				URI:      uri,
 				MimeType: "text/html;profile=mcp-app",
-				Text:     mcpui.ResultsViewHTML(results, avgScore, len(participants)),
+				Text:     mcpui.ResultsViewHTML(results, avgScore, len(votes)),
 			}, nil
 		})
 }

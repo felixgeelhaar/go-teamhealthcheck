@@ -19,6 +19,7 @@ import (
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/config"
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/dashboard"
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
+	"github.com/felixgeelhaar/go-teamhealthcheck/internal/lifecycle"
 	mcptools "github.com/felixgeelhaar/go-teamhealthcheck/internal/mcp"
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/webhook"
@@ -72,7 +73,13 @@ func main() {
 		logger.Info().Str("url", cfg.WebhookURL).Msg("webhook notifications enabled")
 	}
 
-	srv := mcptools.NewServer(store, logger)
+	// Create health check lifecycle manager
+	lc, err := lifecycle.New(logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to build lifecycle manager")
+	}
+
+	srv := mcptools.NewServer(store, logger, lc)
 
 	// Initialize enabled plugins
 	storeReader := storage.NewSDKStoreReader(store)

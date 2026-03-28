@@ -8,6 +8,7 @@ import (
 	bolt "github.com/felixgeelhaar/bolt"
 	"github.com/felixgeelhaar/mcp-go/testutil"
 
+	"github.com/felixgeelhaar/go-teamhealthcheck/internal/lifecycle"
 	mcptools "github.com/felixgeelhaar/go-teamhealthcheck/internal/mcp"
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
 )
@@ -21,7 +22,11 @@ func newTestServer(t *testing.T) *testutil.TestClient {
 	}
 	t.Cleanup(func() { store.Close() })
 
-	srv := mcptools.NewServer(store, logger)
+	lc, err := lifecycle.New(logger)
+	if err != nil {
+		t.Fatalf("lifecycle: %v", err)
+	}
+	srv := mcptools.NewServer(store, logger, lc)
 	return testutil.NewTestClient(t, srv)
 }
 

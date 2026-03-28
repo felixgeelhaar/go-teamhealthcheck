@@ -39,7 +39,7 @@ func registerVoteTools(srv *mcp.Server, store *storage.Store, logger *bolt.Logge
 				}
 			}
 
-			// Validate health check exists and is open
+			// Validate health check exists
 			hc, err := store.FindHealthCheckByID(in.HealthCheckID)
 			if err != nil {
 				return nil, err
@@ -47,41 +47,20 @@ func registerVoteTools(srv *mcp.Server, store *storage.Store, logger *bolt.Logge
 			if hc == nil {
 				return nil, fmt.Errorf("health check %q not found", in.HealthCheckID)
 			}
-			if !hc.IsVotable() {
-				return nil, fmt.Errorf("health check %q is not accepting votes (status: %s)", hc.ID, hc.Status)
-			}
 
-			// Validate metric exists in template
+			// Get template for metric validation
 			tmpl, err := store.FindTemplateByID(hc.TemplateID)
 			if err != nil {
 				return nil, err
 			}
-			validMetric := false
-			for _, m := range tmpl.Metrics {
-				if m.Name == in.MetricName {
-					validMetric = true
-					break
-				}
-			}
-			if !validMetric {
-				return nil, fmt.Errorf("metric %q not found in template %q", in.MetricName, tmpl.Name)
-			}
 
-			// Validate color
-			color, err := domain.ParseVoteColor(in.Color)
+			// Use aggregate root to validate and create vote
+			vote, err := hc.CastVote(in.MetricName, in.Participant, in.Color, in.Comment, tmpl.Metrics)
 			if err != nil {
 				return nil, err
 			}
-
-			vote := &domain.Vote{
-				ID:            uuid.NewString(),
-				HealthCheckID: in.HealthCheckID,
-				MetricName:    in.MetricName,
-				Participant:   in.Participant,
-				Color:         color,
-				Comment:       in.Comment,
-				CreatedAt:     time.Now(),
-			}
+			vote.ID = uuid.NewString()
+			vote.CreatedAt = time.Now()
 
 			if err := store.UpsertVote(vote); err != nil {
 				return nil, fmt.Errorf("submit vote: %w", err)

@@ -116,24 +116,7 @@ func handleAPIResults(store *storage.Store) http.HandlerFunc {
 
 		results := domain.ComputeMetricResults(votes, tmpl.Metrics)
 
-		var totalScore float64
-		var totalVotes int
-		participantNames := []string{}
-		participantSet := make(map[string]bool)
-		for _, v := range votes {
-			if !participantSet[v.Participant] {
-				participantSet[v.Participant] = true
-				participantNames = append(participantNames, v.Participant)
-			}
-		}
-		for _, res := range results {
-			totalScore += res.Score * float64(res.TotalVotes)
-			totalVotes += res.TotalVotes
-		}
-		var avgScore float64
-		if totalVotes > 0 {
-			avgScore = totalScore / float64(totalVotes)
-		}
+		avgScore, totalVotes, participantNames := domain.ComputeOverallScore(results, votes)
 
 		actions, _ := store.FindActionsByHealthCheck(id)
 
@@ -149,7 +132,7 @@ func handleAPIResults(store *storage.Store) http.HandlerFunc {
 			"healthcheck":       hc,
 			"results":           results,
 			"average_score":     avgScore,
-			"participants":      len(participantSet),
+			"participants":      len(participantNames),
 			"participant_names": participantNames,
 			"total_votes":       totalVotes,
 			"actions":           actions,
@@ -339,7 +322,7 @@ func handleAPIAlerts(store *storage.Store) http.HandlerFunc {
 			var a *alert
 
 			// Critical: already low AND declining
-			if latest < 1.5 && tendency == domain.TendencyDeclining {
+			if latest < domain.AlertThresholdCritical && tendency == domain.TendencyDeclining {
 				a = &alert{
 					Metric:    name,
 					Severity:  "critical",
@@ -349,7 +332,7 @@ func handleAPIAlerts(store *storage.Store) http.HandlerFunc {
 					Delta:     delta,
 					Predicted: predicted,
 				}
-			} else if tendency == domain.TendencyDeclining && predicted < 2.0 {
+			} else if tendency == domain.TendencyDeclining && predicted < domain.AlertThresholdWarning {
 				// Warning: declining and predicted to go below 2.0
 				a = &alert{
 					Metric:    name,
@@ -360,7 +343,7 @@ func handleAPIAlerts(store *storage.Store) http.HandlerFunc {
 					Delta:     delta,
 					Predicted: predicted,
 				}
-			} else if latest < 2.0 {
+			} else if latest < domain.AlertThresholdWarning {
 				// Warning: currently low even if stable
 				a = &alert{
 					Metric:    name,
@@ -535,40 +518,21 @@ func handleAPIVote(store *storage.Store) http.HandlerFunc {
 			return
 		}
 
-		// Validate metric exists in template
+		// Get template for metric validation
 		tmpl, err := store.FindTemplateByID(hc.TemplateID)
 		if err != nil {
 			writeError(w, 500, err.Error())
 			return
 		}
-		validMetric := false
-		for _, m := range tmpl.Metrics {
-			if m.Name == req.MetricName {
-				validMetric = true
-				break
-			}
-		}
-		if !validMetric {
-			writeError(w, 400, fmt.Sprintf("metric %q not found in template", req.MetricName))
-			return
-		}
 
-		// Validate color
-		color, err := domain.ParseVoteColor(req.Color)
+		// Use aggregate root to validate and create vote
+		vote, err := hc.CastVote(req.MetricName, req.Participant, req.Color, req.Comment, tmpl.Metrics)
 		if err != nil {
 			writeError(w, 400, err.Error())
 			return
 		}
-
-		vote := &domain.Vote{
-			ID:            uuid.NewString(),
-			HealthCheckID: id,
-			MetricName:    req.MetricName,
-			Participant:   req.Participant,
-			Color:         color,
-			Comment:       req.Comment,
-			CreatedAt:     time.Now(),
-		}
+		vote.ID = uuid.NewString()
+		vote.CreatedAt = time.Now()
 
 		if err := store.UpsertVote(vote); err != nil {
 			writeError(w, 500, err.Error())
@@ -903,41 +867,15 @@ func handleAPIGenerateActions(store *storage.Store) http.HandlerFunc {
 		}
 
 		results := domain.ComputeMetricResults(votes, tmpl.Metrics)
+
+		// Use domain service to generate suggested actions
+		suggested := domain.GenerateSuggestedActions(results, id)
 		var generated []*domain.Action
-
-		for _, res := range results {
-			if res.TotalVotes == 0 {
-				continue
-			}
-
-			var desc string
-
-			// Low score — generate improvement action
-			if res.Score < 2.0 {
-				desc = fmt.Sprintf("Improve %s: currently scoring %.1f/3.0. Discuss root causes and identify one concrete improvement for next sprint.", res.MetricName, res.Score)
-			}
-
-			// High disagreement — generate discussion action
-			if res.GreenCount > 0 && res.RedCount > 0 {
-				spread := float64(res.GreenCount-res.RedCount) / float64(res.TotalVotes)
-				if spread < 0.5 && spread > -0.5 && desc == "" {
-					desc = fmt.Sprintf("Discuss %s: team has split opinions (%d green, %d yellow, %d red). Understand different perspectives.", res.MetricName, res.GreenCount, res.YellowCount, res.RedCount)
-				}
-			}
-
-			if desc != "" {
-				action := &domain.Action{
-					ID:            uuid.NewString(),
-					HealthCheckID: id,
-					MetricName:    res.MetricName,
-					Description:   desc,
-					Assignee:      "",
-					Completed:     false,
-					CreatedAt:     time.Now(),
-				}
-				if err := store.CreateAction(action); err == nil {
-					generated = append(generated, action)
-				}
+		for _, action := range suggested {
+			action.ID = uuid.NewString()
+			action.CreatedAt = time.Now()
+			if err := store.CreateAction(action); err == nil {
+				generated = append(generated, action)
 			}
 		}
 

@@ -30,7 +30,7 @@ type listHealthChecksInput struct {
 	Limit  int    `json:"limit,omitempty" jsonschema:"description=Maximum number of results (default 20)"`
 }
 
-func registerHealthCheckTools(srv *mcp.Server, store *storage.Store, logger *bolt.Logger, sm *domain.HealthCheckStateMachine) {
+func registerHealthCheckTools(srv *mcp.Server, store *storage.Store, logger *bolt.Logger, sm domain.HealthCheckLifecycle) {
 	srv.Tool("create_healthcheck").
 		Description("Create a new health check session for a team using a template. The session starts in 'open' status, ready for votes.").
 		Handler(func(ctx context.Context, in createHealthCheckInput) (any, error) {

@@ -1,118 +1,129 @@
 package domain
 
-import (
-	"fmt"
-	"time"
+import "fmt"
 
-	bolt "github.com/felixgeelhaar/bolt"
-	"github.com/felixgeelhaar/statekit"
-)
+// LifecycleEvent represents a state transition event for a health check.
+type LifecycleEvent string
 
-// HealthCheckContext is the statekit context for health check state transitions.
-type HealthCheckContext struct {
-	HealthCheck *HealthCheck
-	VoteCount   int
-}
-
-// Event types for health check state machine.
 const (
-	EventClose   statekit.EventType = "CLOSE"
-	EventReopen  statekit.EventType = "REOPEN"
-	EventArchive statekit.EventType = "ARCHIVE"
+	EventClose   LifecycleEvent = "CLOSE"
+	EventReopen  LifecycleEvent = "REOPEN"
+	EventArchive LifecycleEvent = "ARCHIVE"
 )
 
-// HealthCheckStateMachine manages the lifecycle of health check sessions.
-type HealthCheckStateMachine struct {
-	openMachine   *statekit.MachineConfig[HealthCheckContext]
-	closedMachine *statekit.MachineConfig[HealthCheckContext]
-	logger        *bolt.Logger
+// HealthCheckLifecycle manages state transitions for health check sessions.
+// The implementation lives outside the domain (e.g., internal/lifecycle).
+type HealthCheckLifecycle interface {
+	Transition(hc *HealthCheck, event LifecycleEvent, voteCount int) error
 }
 
-// NewHealthCheckStateMachine builds the state machine configs for health check lifecycle.
-// Two separate machines handle transitions from different starting states since the
-// regular interpreter always starts at the initial state.
-func NewHealthCheckStateMachine(logger *bolt.Logger) (*HealthCheckStateMachine, error) {
-	// Machine for open health checks: open → closed
-	openMachine, err := statekit.NewMachine[HealthCheckContext]("healthcheck-open").
-		WithInitial("open").
-		WithGuard("hasVotes", func(ctx HealthCheckContext, e statekit.Event) bool {
-			return ctx.VoteCount > 0
-		}).
-		WithAction("setClosedAt", func(ctx *HealthCheckContext, e statekit.Event) {
-			now := time.Now()
-			ctx.HealthCheck.Status = StatusClosed
-			ctx.HealthCheck.ClosedAt = &now
-		}).
-		State("open").
-		On("CLOSE").Target("closed").Guard("hasVotes").Do("setClosedAt").Done().
-		State("closed").Final().Done().
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("build open machine: %w", err)
+// --- Domain services ---
+
+// CastVote validates and creates a Vote on a HealthCheck.
+// This consolidates the vote-casting invariants in the aggregate root.
+func (hc *HealthCheck) CastVote(metricName, participant, color, comment string, templateMetrics []TemplateMetric) (*Vote, error) {
+	if !hc.IsVotable() {
+		return nil, NewDomainError("health check %q is not accepting votes (status: %s)", hc.ID, hc.Status)
 	}
 
-	// Machine for closed health checks: closed → archived or → open (reopen)
-	closedMachine, err := statekit.NewMachine[HealthCheckContext]("healthcheck-closed").
-		WithInitial("closed").
-		WithAction("setArchived", func(ctx *HealthCheckContext, e statekit.Event) {
-			ctx.HealthCheck.Status = StatusArchived
-		}).
-		WithAction("clearClosedAt", func(ctx *HealthCheckContext, e statekit.Event) {
-			ctx.HealthCheck.Status = StatusOpen
-			ctx.HealthCheck.ClosedAt = nil
-		}).
-		State("closed").
-		On("ARCHIVE").Target("archived").Do("setArchived").
-		On("REOPEN").Target("reopened").Do("clearClosedAt").Done().
-		State("archived").Final().Done().
-		State("reopened").Final().Done().
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("build closed machine: %w", err)
+	// Validate metric exists in template
+	valid := false
+	for _, m := range templateMetrics {
+		if m.Name == metricName {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return nil, NewDomainError("metric %q not found in template", metricName)
 	}
 
-	return &HealthCheckStateMachine{
-		openMachine:   openMachine,
-		closedMachine: closedMachine,
-		logger:        logger,
+	// Validate color
+	vc, err := ParseVoteColor(color)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Vote{
+		HealthCheckID: hc.ID,
+		MetricName:    metricName,
+		Participant:   participant,
+		Color:         vc,
+		Comment:       comment,
 	}, nil
 }
 
-// Transition validates and executes a state transition on a health check.
-func (sm *HealthCheckStateMachine) Transition(hc *HealthCheck, event statekit.EventType, voteCount int) error {
-	var machine *statekit.MachineConfig[HealthCheckContext]
-	switch hc.Status {
-	case StatusOpen:
-		machine = sm.openMachine
-	case StatusClosed:
-		machine = sm.closedMachine
-	case StatusArchived:
-		return fmt.Errorf("health check %q is archived, no transitions allowed", hc.ID)
-	default:
-		return fmt.Errorf("unknown status %q for health check %q", hc.Status, hc.ID)
+// ComputeOverallScore computes the weighted average score across all metric results.
+func ComputeOverallScore(results []MetricResult, votes []*Vote) (avgScore float64, totalVotes int, participantNames []string) {
+	var totalScore float64
+	participantSet := make(map[string]bool)
+
+	for _, v := range votes {
+		if !participantSet[v.Participant] {
+			participantSet[v.Participant] = true
+			participantNames = append(participantNames, v.Participant)
+		}
 	}
-
-	interp := statekit.NewInterpreter(machine)
-	interp.UpdateContext(func(ctx *HealthCheckContext) {
-		ctx.HealthCheck = hc
-		ctx.VoteCount = voteCount
-	})
-	interp.Start()
-
-	prevStatus := hc.Status
-	interp.Send(statekit.Event{Type: event})
-
-	// If status didn't change, the transition was rejected (guard failed or no matching event)
-	if hc.Status == prevStatus {
-		return fmt.Errorf("transition %q not allowed from state %q (guard condition not met)", event, prevStatus)
+	for _, r := range results {
+		totalScore += r.Score * float64(r.TotalVotes)
+		totalVotes += r.TotalVotes
 	}
+	if totalVotes > 0 {
+		avgScore = totalScore / float64(totalVotes)
+	}
+	return
+}
 
-	sm.logger.Info().
-		Str("healthcheck_id", hc.ID).
-		Str("event", string(event)).
-		Str("from", string(prevStatus)).
-		Str("to", string(hc.Status)).
-		Msg("health check state transition")
+// Alert severity constants.
+const (
+	AlertSeverityCritical = "critical"
+	AlertSeverityWarning  = "warning"
 
-	return nil
+	AlertThresholdCritical = 1.5
+	AlertThresholdWarning  = 2.0
+)
+
+// GenerateSuggestedActions creates action items for metrics with low scores or high disagreement.
+func GenerateSuggestedActions(results []MetricResult, healthCheckID string) []*Action {
+	var actions []*Action
+	for _, res := range results {
+		if res.TotalVotes == 0 {
+			continue
+		}
+
+		var desc string
+
+		if res.Score < AlertThresholdWarning {
+			desc = NewDomainError("Improve %s: currently scoring %.1f/3.0. Discuss root causes and identify one concrete improvement for next sprint.", res.MetricName, res.Score).Error()
+		}
+
+		if desc == "" && res.GreenCount > 0 && res.RedCount > 0 {
+			spread := float64(res.GreenCount-res.RedCount) / float64(res.TotalVotes)
+			if spread < 0.5 && spread > -0.5 {
+				desc = NewDomainError("Discuss %s: team has split opinions (%d green, %d yellow, %d red). Understand different perspectives.", res.MetricName, res.GreenCount, res.YellowCount, res.RedCount).Error()
+			}
+		}
+
+		if desc != "" {
+			actions = append(actions, &Action{
+				HealthCheckID: healthCheckID,
+				MetricName:    res.MetricName,
+				Description:   desc,
+			})
+		}
+	}
+	return actions
+}
+
+// DomainError represents a business rule violation.
+type DomainError struct {
+	msg string
+}
+
+func NewDomainError(format string, args ...any) *DomainError {
+	return &DomainError{msg: fmt.Sprintf(format, args...)}
+}
+
+func (e *DomainError) Error() string {
+	return e.msg
 }

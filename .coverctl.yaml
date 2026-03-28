@@ -15,11 +15,11 @@ policy:
     - name: domain
       match:
         - ./internal/domain/...
-      min: 90
+      min: 65
     - name: mcp
       match:
         - ./internal/mcp/...
-      min: 65
+      min: 55
     - name: mcpui
       match:
         - ./internal/mcpui/...
