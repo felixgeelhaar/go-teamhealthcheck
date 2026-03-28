@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -134,6 +135,8 @@ func handleAPIResults(store *storage.Store) http.HandlerFunc {
 			avgScore = totalScore / float64(totalVotes)
 		}
 
+		actions, _ := store.FindActionsByHealthCheck(id)
+
 		// Strip names and comments if anonymous
 		if hc.Anonymous {
 			participantNames = []string{}
@@ -149,6 +152,7 @@ func handleAPIResults(store *storage.Store) http.HandlerFunc {
 			"participants":      len(participantSet),
 			"participant_names": participantNames,
 			"total_votes":       totalVotes,
+			"actions":           actions,
 		})
 	}
 }
@@ -571,5 +575,194 @@ func handleAPICreateHealthCheck(store *storage.Store) http.HandlerFunc {
 			"healthcheck": hc,
 			"template":    tmpl,
 		})
+	}
+}
+
+// --- CSV Export ---
+
+func handleAPIExport(store *storage.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		hc, err := store.FindHealthCheckByID(id)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+		if hc == nil {
+			writeError(w, 404, "health check not found")
+			return
+		}
+
+		tmpl, err := store.FindTemplateByID(hc.TemplateID)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+
+		votes, err := store.FindVotesByHealthCheck(id)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+
+		results := domain.ComputeMetricResults(votes, tmpl.Metrics)
+
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.csv", strings.ReplaceAll(hc.Name, " ", "_")))
+
+		fmt.Fprintf(w, "Metric,Green,Yellow,Red,Total Votes,Score,Description Good,Description Bad\n")
+		for _, res := range results {
+			fmt.Fprintf(w, "%s,%d,%d,%d,%d,%.2f,\"%s\",\"%s\"\n",
+				csvEscape(res.MetricName),
+				res.GreenCount, res.YellowCount, res.RedCount,
+				res.TotalVotes, res.Score,
+				csvEscape(res.DescriptionGood),
+				csvEscape(res.DescriptionBad),
+			)
+		}
+	}
+}
+
+func csvEscape(s string) string {
+	return strings.ReplaceAll(s, "\"", "\"\"")
+}
+
+// --- Cross-Team Comparison ---
+
+func handleAPICompare(store *storage.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		teams, err := store.FindAllTeams()
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+
+		type teamSummary struct {
+			TeamID   string  `json:"team_id"`
+			TeamName string  `json:"team_name"`
+			HCName   string  `json:"healthcheck_name"`
+			HCID     string  `json:"healthcheck_id"`
+			AvgScore float64 `json:"avg_score"`
+			Voters   int     `json:"voters"`
+			Date     string  `json:"date"`
+			Status   string  `json:"status"`
+		}
+
+		var summaries []teamSummary
+
+		for _, team := range teams {
+			hcs, err := store.FindAllHealthChecks(domain.HealthCheckFilter{
+				TeamID: &team.ID,
+				Limit:  1,
+			})
+			if err != nil || len(hcs) == 0 {
+				continue
+			}
+
+			hc := hcs[0]
+			tmpl, err := store.FindTemplateByID(hc.TemplateID)
+			if err != nil {
+				continue
+			}
+			votes, err := store.FindVotesByHealthCheck(hc.ID)
+			if err != nil || len(votes) == 0 {
+				continue
+			}
+
+			results := domain.ComputeMetricResults(votes, tmpl.Metrics)
+			var totalScore float64
+			var totalVotes int
+			voterSet := make(map[string]bool)
+			for _, v := range votes {
+				voterSet[v.Participant] = true
+			}
+			for _, res := range results {
+				totalScore += res.Score * float64(res.TotalVotes)
+				totalVotes += res.TotalVotes
+			}
+			var avgScore float64
+			if totalVotes > 0 {
+				avgScore = totalScore / float64(totalVotes)
+			}
+
+			summaries = append(summaries, teamSummary{
+				TeamID:   team.ID,
+				TeamName: team.Name,
+				HCName:   hc.Name,
+				HCID:     hc.ID,
+				AvgScore: avgScore,
+				Voters:   len(voterSet),
+				Date:     hc.CreatedAt.Format("2006-01-02"),
+				Status:   string(hc.Status),
+			})
+		}
+
+		if summaries == nil {
+			summaries = []teamSummary{}
+		}
+
+		writeJSON(w, map[string]any{"teams": summaries})
+	}
+}
+
+// --- Action Items ---
+
+func handleAPICreateAction(store *storage.Store) http.HandlerFunc {
+	type actionRequest struct {
+		MetricName  string `json:"metric_name"`
+		Description string `json:"description"`
+		Assignee    string `json:"assignee"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+
+		var req actionRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, 400, "invalid request body")
+			return
+		}
+		if req.Description == "" {
+			writeError(w, 400, "description is required")
+			return
+		}
+
+		hc, err := store.FindHealthCheckByID(id)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+		if hc == nil {
+			writeError(w, 404, "health check not found")
+			return
+		}
+
+		action := &domain.Action{
+			ID:            uuid.NewString(),
+			HealthCheckID: id,
+			MetricName:    req.MetricName,
+			Description:   req.Description,
+			Assignee:      req.Assignee,
+			Completed:     false,
+			CreatedAt:     time.Now(),
+		}
+
+		if err := store.CreateAction(action); err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+
+		writeJSON(w, action)
+	}
+}
+
+func handleAPICompleteAction(store *storage.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if err := store.CompleteAction(id); err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+		writeJSON(w, map[string]string{"status": "completed", "action_id": id})
 	}
 }

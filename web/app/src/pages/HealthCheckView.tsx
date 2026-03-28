@@ -6,6 +6,7 @@ import { VoteProgress } from '../components/VoteProgress'
 import { StatusBadge } from '../components/StatusBadge'
 import { RadarChart } from '../components/RadarChart'
 import { DiscussionGuide } from '../components/DiscussionGuide'
+import { ActionItems } from '../components/ActionItems'
 import { scoreColorClass, getAvatarColor, getInitial } from '../utils'
 import type { HealthCheckResults, WSEvent } from '../types'
 
@@ -94,13 +95,20 @@ export function HealthCheckView() {
         </div>
       )}
 
-      {hc.Status === 'open' && (
-        <div style={{ marginBottom: '24px' }}>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        {hc.Status === 'open' && (
           <Link to={`/healthcheck/${id}/vote`} className="btn btn-primary btn-lg">
             Cast Your Vote
           </Link>
-        </div>
-      )}
+        )}
+        <a
+          href={`/api/healthchecks/${id}/export`}
+          className="btn btn-secondary"
+          download
+        >
+          {'\u2B07'} Download CSV
+        </a>
+      </div>
 
       <VoteProgress results={results} totalMetrics={results.length} />
 
@@ -121,6 +129,15 @@ export function HealthCheckView() {
 
       {total_votes > 0 && id && (
         <DiscussionGuide healthcheckId={id} />
+      )}
+
+      {id && (
+        <ActionItems
+          healthcheckId={id}
+          actions={data.actions || []}
+          metricNames={results.map(r => r.MetricName)}
+          onActionCreated={refetch}
+        />
       )}
     </div>
   )

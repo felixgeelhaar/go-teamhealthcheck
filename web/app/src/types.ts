@@ -54,6 +54,7 @@ export interface HealthCheckResults {
   participants: number
   participant_names: string[]
   total_votes: number
+  actions: Action[]
 }
 
 export interface HealthCheckDetail {
@@ -84,6 +85,17 @@ export interface CreateHealthCheckPayload {
   name: string
   template_id: string
   anonymous?: boolean
+}
+
+export interface Action {
+  ID: string
+  HealthCheckID: string
+  MetricName: string
+  Description: string
+  Assignee: string
+  Completed: boolean
+  CreatedAt: string
+  CompletedAt: string | null
 }
 
 export interface DiscussionTopic {

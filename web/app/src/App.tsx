@@ -8,6 +8,7 @@ import { HealthCheckView } from './pages/HealthCheckView'
 import { VotingPage } from './pages/VotingPage'
 import { CreateTemplate } from './pages/CreateTemplate'
 import { CreateHealthCheck } from './pages/CreateHealthCheck'
+import { CompareTeams } from './pages/CompareTeams'
 
 export default function App() {
   const { isSet } = useParticipant()
@@ -32,6 +33,7 @@ export default function App() {
             <Route path="/healthcheck/:id" element={<HealthCheckView />} />
             <Route path="/healthcheck/:id/vote" element={<VotingPage />} />
             <Route path="/templates/new" element={<CreateTemplate />} />
+            <Route path="/compare" element={<CompareTeams />} />
             <Route path="/healthcheck/new/:teamId" element={<CreateHealthCheck />} />
           </Routes>
         </main>

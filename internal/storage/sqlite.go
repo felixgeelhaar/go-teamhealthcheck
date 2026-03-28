@@ -174,4 +174,17 @@ CREATE TABLE IF NOT EXISTS votes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_votes_healthcheck ON votes(healthcheck_id);
+
+CREATE TABLE IF NOT EXISTS actions (
+    id              TEXT PRIMARY KEY,
+    healthcheck_id  TEXT NOT NULL REFERENCES healthchecks(id) ON DELETE CASCADE,
+    metric_name     TEXT NOT NULL DEFAULT '',
+    description     TEXT NOT NULL,
+    assignee        TEXT NOT NULL DEFAULT '',
+    completed       BOOLEAN NOT NULL DEFAULT 0,
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at    DATETIME
+);
+
+CREATE INDEX IF NOT EXISTS idx_actions_healthcheck ON actions(healthcheck_id);
 `

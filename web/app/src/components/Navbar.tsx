@@ -28,17 +28,22 @@ export function Navbar({ onChangeNameClick }: Props) {
         Health Check
       </Link>
 
-      {name && (
-        <div className="navbar-user" onClick={onChangeNameClick}>
-          <div
-            className="avatar"
-            style={{ backgroundColor: getAvatarColor(name) }}
-          >
-            {getInitial(name)}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <Link to="/compare" className="btn btn-ghost btn-sm">
+          {'\uD83C\uDFE2'} Compare Teams
+        </Link>
+        {name && (
+          <div className="navbar-user" onClick={onChangeNameClick}>
+            <div
+              className="avatar"
+              style={{ backgroundColor: getAvatarColor(name) }}
+            >
+              {getInitial(name)}
+            </div>
+            <span className="navbar-user-name">{name}</span>
           </div>
-          <span className="navbar-user-name">{name}</span>
-        </div>
-      )}
+        )}
+      </div>
     </nav>
   )
 }
