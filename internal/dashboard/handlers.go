@@ -756,6 +756,81 @@ func handleAPICreateAction(store *storage.Store) http.HandlerFunc {
 	}
 }
 
+func handleAPIGenerateActions(store *storage.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		hc, err := store.FindHealthCheckByID(id)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+		if hc == nil {
+			writeError(w, 404, "health check not found")
+			return
+		}
+
+		tmpl, err := store.FindTemplateByID(hc.TemplateID)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+
+		votes, err := store.FindVotesByHealthCheck(id)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+
+		results := domain.ComputeMetricResults(votes, tmpl.Metrics)
+		var generated []*domain.Action
+
+		for _, res := range results {
+			if res.TotalVotes == 0 {
+				continue
+			}
+
+			var desc string
+
+			// Low score — generate improvement action
+			if res.Score < 2.0 {
+				desc = fmt.Sprintf("Improve %s: currently scoring %.1f/3.0. Discuss root causes and identify one concrete improvement for next sprint.", res.MetricName, res.Score)
+			}
+
+			// High disagreement — generate discussion action
+			if res.GreenCount > 0 && res.RedCount > 0 {
+				spread := float64(res.GreenCount-res.RedCount) / float64(res.TotalVotes)
+				if spread < 0.5 && spread > -0.5 && desc == "" {
+					desc = fmt.Sprintf("Discuss %s: team has split opinions (%d green, %d yellow, %d red). Understand different perspectives.", res.MetricName, res.GreenCount, res.YellowCount, res.RedCount)
+				}
+			}
+
+			if desc != "" {
+				action := &domain.Action{
+					ID:            uuid.NewString(),
+					HealthCheckID: id,
+					MetricName:    res.MetricName,
+					Description:   desc,
+					Assignee:      "",
+					Completed:     false,
+					CreatedAt:     time.Now(),
+				}
+				if err := store.CreateAction(action); err == nil {
+					generated = append(generated, action)
+				}
+			}
+		}
+
+		if generated == nil {
+			generated = []*domain.Action{}
+		}
+
+		writeJSON(w, map[string]any{
+			"generated": len(generated),
+			"actions":   generated,
+		})
+	}
+}
+
 func handleAPICompleteAction(store *storage.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")

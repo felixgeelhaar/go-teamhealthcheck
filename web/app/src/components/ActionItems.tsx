@@ -17,6 +17,7 @@ export function ActionItems({ healthcheckId, actions, metricNames, onActionCreat
   const [metricName, setMetricName] = useState(metricNames[0] || '')
   const [submitting, setSubmitting] = useState(false)
   const [completing, setCompleting] = useState<string | null>(null)
+  const [generating, setGenerating] = useState(false)
 
   const handleAdd = async () => {
     if (!description.trim() || !assignee.trim() || !metricName) return
@@ -54,13 +55,37 @@ export function ActionItems({ healthcheckId, actions, metricNames, onActionCreat
     }
   }
 
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch(`/api/healthchecks/${healthcheckId}/generate-actions`, {
+        method: 'POST',
+      })
+      if (res.ok) {
+        onActionCreated()
+      }
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   const pendingActions = (actions || []).filter(a => !a.Completed)
   const completedActions = (actions || []).filter(a => a.Completed)
 
   return (
     <div className="glass-card" style={{ marginTop: '24px' }}>
-      <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span>{'\uD83D\uDCCB'}</span> Action Items
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+          <span>{'\uD83D\uDCCB'}</span> Action Items
+        </div>
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={handleGenerate}
+          disabled={generating}
+          style={{ whiteSpace: 'nowrap' }}
+        >
+          {generating ? 'Generating...' : '\u2728 Generate Actions'}
+        </button>
       </div>
 
       {pendingActions.length === 0 && completedActions.length === 0 && (

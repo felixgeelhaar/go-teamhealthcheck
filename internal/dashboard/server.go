@@ -49,6 +49,7 @@ func RegisterRoutes(mux *http.ServeMux, store *storage.Store, logger *bolt.Logge
 
 	// REST API — POST
 	mux.HandleFunc("POST /api/healthchecks/{id}/actions", handleAPICreateAction(store))
+	mux.HandleFunc("POST /api/healthchecks/{id}/generate-actions", handleAPIGenerateActions(store))
 	mux.HandleFunc("POST /api/actions/{id}/complete", handleAPICompleteAction(store))
 	mux.HandleFunc("POST /api/healthchecks/{id}/vote", handleAPIVote(store))
 	mux.HandleFunc("POST /api/templates", handleAPICreateTemplate(store))

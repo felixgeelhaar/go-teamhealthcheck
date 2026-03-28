@@ -21,6 +21,7 @@ import (
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/events"
 	mcptools "github.com/felixgeelhaar/go-teamhealthcheck/internal/mcp"
 	"github.com/felixgeelhaar/go-teamhealthcheck/internal/storage"
+	"github.com/felixgeelhaar/go-teamhealthcheck/internal/webhook"
 	"github.com/felixgeelhaar/go-teamhealthcheck/sdk"
 
 	// Import plugins — each plugin's init() calls sdk.Register()
@@ -63,6 +64,13 @@ func main() {
 	// Create event bus and attach to store
 	bus := events.NewBus()
 	store.SetEventBus(bus)
+
+	// Set up webhook notifications if configured
+	if cfg.WebhookURL != "" {
+		wh := webhook.New(cfg.WebhookURL, logger)
+		bus.Subscribe(wh)
+		logger.Info().Str("url", cfg.WebhookURL).Msg("webhook notifications enabled")
+	}
 
 	srv := mcptools.NewServer(store, logger)
 

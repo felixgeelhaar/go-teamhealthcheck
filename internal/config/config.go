@@ -8,7 +8,8 @@ import (
 
 // Config holds the application configuration.
 type Config struct {
-	Plugins map[string]PluginConfig `yaml:"plugins"`
+	Plugins    map[string]PluginConfig `yaml:"plugins"`
+	WebhookURL string                  `yaml:"webhook_url"`
 }
 
 // PluginConfig holds per-plugin configuration.
