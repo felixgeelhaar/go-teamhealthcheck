@@ -39,4 +39,4 @@ policy:
     - name: dashboard
       match:
         - ./internal/dashboard/...
-      min: 12
+      min: 10

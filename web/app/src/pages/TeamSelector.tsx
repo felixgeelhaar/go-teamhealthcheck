@@ -4,6 +4,7 @@ import { useApi } from '../hooks/useApi'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { StatusBadge } from '../components/StatusBadge'
 import { TrendChart } from '../components/TrendChart'
+import { HealthAlerts } from '../components/HealthAlerts'
 import { formatDate } from '../utils'
 import type { Team, HealthCheck, WSEvent } from '../types'
 
@@ -67,6 +68,8 @@ export function TeamSelector() {
           ))}
         </select>
       </div>
+
+      {selectedTeam && <HealthAlerts teamId={selectedTeam} />}
 
       {trends && trends.sessions && trends.sessions.length > 0 && (
         <TrendChart sessions={trends.sessions} trends={trends.trends || []} />

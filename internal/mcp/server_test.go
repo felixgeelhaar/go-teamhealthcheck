@@ -151,7 +151,16 @@ func TestEndToEndHealthCheckFlow(t *testing.T) {
 	if len(templates) == 0 {
 		t.Fatal("no templates found")
 	}
-	templateID := templates[0].ID
+	var templateID string
+	for _, tmpl := range templates {
+		if tmpl.Name == "Spotify Squad Health Check" {
+			templateID = tmpl.ID
+			break
+		}
+	}
+	if templateID == "" {
+		templateID = templates[0].ID
+	}
 
 	// 2. Create a team
 	raw = callTool(t, tc, "create_team", map[string]any{
@@ -285,9 +294,21 @@ func TestInvalidVoteColor(t *testing.T) {
 func setupTestHC(t *testing.T, tc *testutil.TestClient, teamName, hcName string) (teamID, templateID, hcID string) {
 	t.Helper()
 	raw := callTool(t, tc, "list_templates", map[string]any{})
-	var templates []struct{ ID string }
+	var templates []struct {
+		ID   string
+		Name string
+	}
 	json.Unmarshal(raw, &templates)
-	templateID = templates[0].ID
+	// Find the Spotify template
+	for _, tmpl := range templates {
+		if tmpl.Name == "Spotify Squad Health Check" {
+			templateID = tmpl.ID
+			break
+		}
+	}
+	if templateID == "" {
+		templateID = templates[0].ID
+	}
 
 	raw = callTool(t, tc, "create_team", map[string]any{"name": teamName, "members": []string{"Alice", "Bob"}})
 	var team struct{ ID string }
@@ -354,16 +375,26 @@ func TestTemplateTools(t *testing.T) {
 	tc := newTestServer(t)
 	defer tc.Close()
 
-	// List templates (should have Spotify)
+	// List templates (should have all built-in templates)
 	raw := callTool(t, tc, "list_templates", map[string]any{})
 	var templates []struct{ ID, Name string }
 	json.Unmarshal(raw, &templates)
-	if len(templates) == 0 {
-		t.Fatal("no templates")
+	if len(templates) < 4 {
+		t.Errorf("expected at least 4 built-in templates, got %d", len(templates))
 	}
 
-	// Get template
-	raw = callTool(t, tc, "get_template", map[string]any{"template_id": templates[0].ID})
+	// Find and get Spotify template
+	var spotifyID string
+	for _, tmpl := range templates {
+		if tmpl.Name == "Spotify Squad Health Check" {
+			spotifyID = tmpl.ID
+			break
+		}
+	}
+	if spotifyID == "" {
+		t.Fatal("Spotify template not found")
+	}
+	raw = callTool(t, tc, "get_template", map[string]any{"template_id": spotifyID})
 	var tmpl struct {
 		ID      string
 		Metrics []struct{ Name string }

@@ -265,6 +265,127 @@ func handleAPITeamTrends(store *storage.Store) http.HandlerFunc {
 	}
 }
 
+func handleAPIAlerts(store *storage.Store) http.HandlerFunc {
+	type alert struct {
+		Metric    string  `json:"metric"`
+		Severity  string  `json:"severity"` // "warning" or "critical"
+		Message   string  `json:"message"`
+		Score     float64 `json:"current_score"`
+		Trend     string  `json:"trend"` // "declining", "stable", "improving"
+		Delta     float64 `json:"delta"`
+		Predicted float64 `json:"predicted_score"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		teamID := r.PathValue("id")
+
+		hcs, err := store.FindAllHealthChecks(domain.HealthCheckFilter{
+			TeamID: &teamID,
+			Limit:  10,
+		})
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+
+		if len(hcs) < 2 {
+			writeJSON(w, map[string]any{"alerts": []alert{}, "message": "Need at least 2 health checks for predictions"})
+			return
+		}
+
+		// Reverse to chronological order
+		for i, j := 0, len(hcs)-1; i < j; i, j = i+1, j-1 {
+			hcs[i], hcs[j] = hcs[j], hcs[i]
+		}
+
+		// Collect per-metric scores across sessions
+		metricScores := make(map[string][]float64)
+		for _, hc := range hcs {
+			tmpl, err := store.FindTemplateByID(hc.TemplateID)
+			if err != nil {
+				continue
+			}
+			votes, err := store.FindVotesByHealthCheck(hc.ID)
+			if err != nil || len(votes) == 0 {
+				continue
+			}
+			for _, res := range domain.ComputeMetricResults(votes, tmpl.Metrics) {
+				if res.TotalVotes > 0 {
+					metricScores[res.MetricName] = append(metricScores[res.MetricName], res.Score)
+				}
+			}
+		}
+
+		var alerts []alert
+		for name, scores := range metricScores {
+			if len(scores) < 2 {
+				continue
+			}
+
+			latest := scores[len(scores)-1]
+			delta := latest - scores[0]
+			tendency := domain.ComputeTendency(delta)
+
+			// Simple linear prediction: extend the trend one step
+			avgDelta := delta / float64(len(scores)-1)
+			predicted := latest + avgDelta
+			if predicted < 1.0 {
+				predicted = 1.0
+			}
+			if predicted > 3.0 {
+				predicted = 3.0
+			}
+
+			var a *alert
+
+			// Critical: already low AND declining
+			if latest < 1.5 && tendency == domain.TendencyDeclining {
+				a = &alert{
+					Metric:    name,
+					Severity:  "critical",
+					Message:   fmt.Sprintf("%s is critically low (%.1f) and still declining. Immediate attention needed.", name, latest),
+					Score:     latest,
+					Trend:     string(tendency),
+					Delta:     delta,
+					Predicted: predicted,
+				}
+			} else if tendency == domain.TendencyDeclining && predicted < 2.0 {
+				// Warning: declining and predicted to go below 2.0
+				a = &alert{
+					Metric:    name,
+					Severity:  "warning",
+					Message:   fmt.Sprintf("%s is declining (%.1f → predicted %.1f). May need attention next sprint.", name, latest, predicted),
+					Score:     latest,
+					Trend:     string(tendency),
+					Delta:     delta,
+					Predicted: predicted,
+				}
+			} else if latest < 2.0 {
+				// Warning: currently low even if stable
+				a = &alert{
+					Metric:    name,
+					Severity:  "warning",
+					Message:   fmt.Sprintf("%s has been consistently low (%.1f). Consider dedicated improvement efforts.", name, latest),
+					Score:     latest,
+					Trend:     string(tendency),
+					Delta:     delta,
+					Predicted: predicted,
+				}
+			}
+
+			if a != nil {
+				alerts = append(alerts, *a)
+			}
+		}
+
+		if alerts == nil {
+			alerts = []alert{}
+		}
+
+		writeJSON(w, map[string]any{"alerts": alerts})
+	}
+}
+
 func handleAPIDiscussion(store *storage.Store) http.HandlerFunc {
 	type topic struct {
 		Priority   int      `json:"priority"`

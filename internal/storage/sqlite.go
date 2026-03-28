@@ -99,25 +99,27 @@ func (s *Store) migrate() error {
 }
 
 func (s *Store) seedDefaults() error {
-	tmpl := seed.SpotifyTemplate()
+	for _, tmpl := range seed.AllBuiltInTemplates() {
+		existing, err := s.FindTemplateByName(tmpl.Name)
+		if err != nil {
+			return err
+		}
+		if existing != nil {
+			continue
+		}
 
-	// Check if already seeded
-	existing, err := s.FindTemplateByName(tmpl.Name)
-	if err != nil {
-		return err
-	}
-	if existing != nil {
-		return nil
-	}
+		tmpl.ID = uuid.NewString()
+		for i := range tmpl.Metrics {
+			tmpl.Metrics[i].ID = uuid.NewString()
+			tmpl.Metrics[i].TemplateID = tmpl.ID
+		}
 
-	tmpl.ID = uuid.NewString()
-	for i := range tmpl.Metrics {
-		tmpl.Metrics[i].ID = uuid.NewString()
-		tmpl.Metrics[i].TemplateID = tmpl.ID
+		s.logger.Debug().Str("template", tmpl.Name).Msg("seeding built-in template")
+		if err := s.CreateTemplate(&tmpl); err != nil {
+			return err
+		}
 	}
-
-	s.logger.Debug().Str("template", tmpl.Name).Msg("seeding built-in template")
-	return s.CreateTemplate(&tmpl)
+	return nil
 }
 
 const schema = `
